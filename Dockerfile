@@ -4,7 +4,7 @@ ENV JAVA_TOOL_OPTIONS=""
 
 ARG SCM_URL=https://github.com/julbme/gh-action-semver-release-vars
 ARG ARTIFACT_ID=gh-action-semver-release-vars
-ARG VERSION=1.0.0
+ARG VERSION=1.0.1-SNAPSHOT
 
 WORKDIR /app
 
