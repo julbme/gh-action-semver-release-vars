@@ -120,7 +120,7 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
             ghRepository = ghApi.getRepository(ghActionsKit.getGitHubRepository());
 
             // Get repository tags.
-            var tagsByVersion = getTags();
+            var tagsByVersion = getValidSemverTags();
 
             // Ensure a tag with this version does not exist.
             if (tagsByVersion.containsKey(releaseVersion.toLowerCase(Locale.ROOT))) {
@@ -347,13 +347,18 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
      * @return the tags of the given repository.
      * @throws IOException if an error occurs.
      */
-    Map<String, GHTag> getTags() throws IOException {
+    Map<String, GHTag> getValidSemverTags() throws IOException {
         var tags = new HashMap<String, GHTag>();
         for (GHTag ghTag : ghRepository.listTags()) {
             var tagName = STARTS_WITH_V_PATTERN
                     .matcher(ghTag.getName().toLowerCase(Locale.ROOT))
                     .replaceFirst("");
-            tags.put(tagName, ghTag);
+            try {
+                new Semver(tagName);
+                tags.put(tagName, ghTag);
+            } catch (SemverException e) {
+                // NOOP
+            }
         }
         return tags;
     }

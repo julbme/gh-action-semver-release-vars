@@ -272,7 +272,7 @@ class SemverReleaseVarsGitHubActionTest {
         doNothing().when(spy).connectApi();
 
         when(this.ghApiMock.getRepository("octocat/Hello-World")).thenReturn(ghRepositoryMock);
-        doReturn(Map.of("1.0.0", ghTag)).when(spy).getTags();
+        doReturn(Map.of("1.0.0", ghTag)).when(spy).getValidSemverTags();
 
         doReturn(Optional.empty()).when(spy).getMaintenanceBranchName("1.1.0-rc.1+abcdef");
         when(this.ghRepositoryMock.getDefaultBranch()).thenReturn("main");
@@ -290,7 +290,7 @@ class SemverReleaseVarsGitHubActionTest {
         verify(spy).getRunReleaseBranchName();
         verify(spy).getMaintenanceBranchName("1.1.0-rc.1+abcdef");
         verify(spy).connectApi();
-        verify(spy).getTags();
+        verify(spy).getValidSemverTags();
         verify(spy).isLatestMajorVersion("1.1.0-rc.1+abcdef", Set.of("1.0.0"));
         verify(spy).isLatestMajorMinorVersion("1.1.0-rc.1+abcdef", Set.of("1.0.0"));
         verify(spy).isLatestMajorMinorPatchVersion("1.1.0-rc.1+abcdef", Set.of("1.0.0"));
@@ -348,7 +348,7 @@ class SemverReleaseVarsGitHubActionTest {
         doNothing().when(spy).connectApi();
 
         when(this.ghApiMock.getRepository("octocat/Hello-World")).thenReturn(ghRepositoryMock);
-        doReturn(Map.of("1.1.1", ghTag)).when(spy).getTags();
+        doReturn(Map.of("1.1.1", ghTag)).when(spy).getValidSemverTags();
 
         doReturn(Optional.empty()).when(spy).getMaintenanceBranchName("1.1.0-rc.1+abcdef");
         when(this.ghRepositoryMock.getDefaultBranch()).thenReturn("main");
@@ -366,7 +366,7 @@ class SemverReleaseVarsGitHubActionTest {
         verify(spy).getRunReleaseBranchName();
         verify(spy).getMaintenanceBranchName("1.1.0-rc.1+abcdef");
         verify(spy).connectApi();
-        verify(spy).getTags();
+        verify(spy).getValidSemverTags();
         verify(spy).isLatestMajorVersion("1.1.0-rc.1+abcdef", Set.of("1.1.1"));
         verify(spy).isLatestMajorMinorVersion("1.1.0-rc.1+abcdef", Set.of("1.1.1"));
         verify(spy).isLatestMajorMinorPatchVersion("1.1.0-rc.1+abcdef", Set.of("1.1.1"));
@@ -424,7 +424,7 @@ class SemverReleaseVarsGitHubActionTest {
         doNothing().when(spy).connectApi();
 
         when(this.ghApiMock.getRepository("octocat/Hello-World")).thenReturn(ghRepositoryMock);
-        doReturn(Map.of("1.0.0", ghTag)).when(spy).getTags();
+        doReturn(Map.of("1.0.0", ghTag)).when(spy).getValidSemverTags();
 
         doReturn(Optional.of("maintenances/1.x")).when(spy).getMaintenanceBranchName("1.1.0");
         when(this.ghRepositoryMock.getDefaultBranch()).thenReturn("main");
@@ -442,7 +442,7 @@ class SemverReleaseVarsGitHubActionTest {
         verify(spy).getRunReleaseBranchName();
         verify(spy).getMaintenanceBranchName("1.1.0");
         verify(spy).connectApi();
-        verify(spy).getTags();
+        verify(spy).getValidSemverTags();
         verify(spy).isLatestMajorVersion("1.1.0", Set.of("1.0.0"));
         verify(spy).isLatestMajorMinorVersion("1.1.0", Set.of("1.0.0"));
         verify(spy).isLatestMajorMinorPatchVersion("1.1.0", Set.of("1.0.0"));
@@ -498,7 +498,7 @@ class SemverReleaseVarsGitHubActionTest {
         doNothing().when(spy).connectApi();
 
         when(this.ghApiMock.getRepository("octocat/Hello-World")).thenReturn(ghRepositoryMock);
-        doReturn(Map.of("1.0.0", ghTag)).when(spy).getTags();
+        doReturn(Map.of("1.0.0", ghTag)).when(spy).getValidSemverTags();
 
         assertThrows(CompletionException.class, () -> spy.execute());
 
@@ -507,7 +507,7 @@ class SemverReleaseVarsGitHubActionTest {
         verify(spy).getInputPackageVersion();
         verify(spy).getReleaseBranchName();
         verify(spy).connectApi();
-        verify(spy).getTags();
+        verify(spy).getValidSemverTags();
         verify(this.ghApiMock).getRepository("octocat/Hello-World");
         verify(this.ghActionsKitMock, never()).setOutput(anyString(), any());
     }
@@ -662,16 +662,22 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenGetTags_thenReturnTags() throws Exception {
+    void whenGetValidSemverTags_thenReturnTags() throws Exception {
         var ghTag1 = Mockito.mock(GHTag.class);
         when(ghTag1.getName()).thenReturn("v1.0.0");
 
         var ghTag2 = Mockito.mock(GHTag.class);
         when(ghTag2.getName()).thenReturn("2.0.0");
 
-        when(ghRepositoryMock.listTags()).thenReturn(new LocalPagedIterable<>(List.of(ghTag1, ghTag2)));
+        var ghTag3 = Mockito.mock(GHTag.class);
+        when(ghTag3.getName()).thenReturn("1");
 
-        assertThat(this.githubAction.getTags()).isEqualTo(Map.of("1.0.0", ghTag1, "2.0.0", ghTag2));
+        var ghTag4 = Mockito.mock(GHTag.class);
+        when(ghTag4.getName()).thenReturn("1.0");
+
+        when(ghRepositoryMock.listTags()).thenReturn(new LocalPagedIterable<>(List.of(ghTag1, ghTag2, ghTag3, ghTag4)));
+
+        assertThat(this.githubAction.getValidSemverTags()).isEqualTo(Map.of("1.0.0", ghTag1, "2.0.0", ghTag2));
 
         verify(ghRepositoryMock).listTags();
         verify(ghTag1).getName();
