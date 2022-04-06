@@ -21,24 +21,17 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 package me.julb.applications.github.actions;
-
-import com.vdurmont.semver4j.Semver;
-import com.vdurmont.semver4j.SemverException;
 
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeSet;
 import java.util.concurrent.CompletionException;
 import java.util.regex.Pattern;
-
-import lombok.AccessLevel;
-import lombok.NonNull;
-import lombok.Setter;
 
 import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.github.GHRepository;
@@ -46,8 +39,15 @@ import org.kohsuke.github.GHTag;
 import org.kohsuke.github.GitHub;
 import org.kohsuke.github.GitHubBuilder;
 
+import com.vdurmont.semver4j.Semver;
+import com.vdurmont.semver4j.SemverException;
+
 import me.julb.sdk.github.actions.kit.GitHubActionsKit;
 import me.julb.sdk.github.actions.spi.GitHubActionProvider;
+
+import lombok.AccessLevel;
+import lombok.NonNull;
+import lombok.Setter;
 
 /**
  * The action to compute SemVer release vars. &lt;br&gt;
@@ -61,31 +61,38 @@ import me.julb.sdk.github.actions.spi.GitHubActionProvider;
     private static final String SNAPSHOT_SUFFIX = &quot;SNAPSHOT&quot;;
 
     /**
+     * The pattern to match first &quot;v&quot; character.
+     */
+<span class="fc" id="L66">    private static final Pattern STARTS_WITH_V_PATTERN = Pattern.compile(&quot;^v&quot;);</span>
+
+    /**
      * The pattern to match for trigger release branch.
      */
-<span class="fc" id="L66">    private static final Pattern TRIGGER_RELEASE_BRANCH_PATTERN = Pattern.compile(&quot;^releases/trigger(-v?(?&lt;version&gt;[0-9]+[.][0-9]+[.][0-9]+[\\w.+\\-]*))?$&quot;);</span>
+<span class="fc" id="L71">    private static final Pattern TRIGGER_RELEASE_BRANCH_PATTERN =</span>
+<span class="fc" id="L72">            Pattern.compile(&quot;^releases/trigger(-v?(?&lt;version&gt;[0-9]+[.][0-9]+[.][0-9]+[\\w.+\\-]*))?$&quot;);</span>
 
     /**
      * The pattern to match for maintenance branch.
      */
-<span class="fc" id="L71">    private static final Pattern MAINTENANCE_BRANCH_PATTERN = Pattern.compile(&quot;^maintenances/(?&lt;major&gt;[0-9]+)[.]((?&lt;minor&gt;[0-9]+)[.])?x$&quot;);</span>
+<span class="fc" id="L77">    private static final Pattern MAINTENANCE_BRANCH_PATTERN =</span>
+<span class="fc" id="L78">            Pattern.compile(&quot;^maintenances/(?&lt;major&gt;[0-9]+)[.]((?&lt;minor&gt;[0-9]+)[.])?x$&quot;);</span>
 
     /**
      * The GitHub action kit.
      */
-<span class="fc" id="L76">    @Setter(AccessLevel.PACKAGE)</span>
+<span class="fc" id="L83">    @Setter(AccessLevel.PACKAGE)</span>
     private GitHubActionsKit ghActionsKit = GitHubActionsKit.INSTANCE;
 
     /**
      * The GitHub API.
      */
-<span class="fc" id="L82">    @Setter(AccessLevel.PACKAGE)</span>
+<span class="fc" id="L89">    @Setter(AccessLevel.PACKAGE)</span>
     private GitHub ghApi;
 
     /**
      * The GitHub repository.
      */
-<span class="fc" id="L88">    @Setter(AccessLevel.PACKAGE)</span>
+<span class="fc" id="L95">    @Setter(AccessLevel.PACKAGE)</span>
     private GHRepository ghRepository;
 
     /**
@@ -95,87 +102,135 @@ import me.julb.sdk.github.actions.spi.GitHubActionProvider;
     public void execute() {
         try {
             // Get inputs
-<span class="fc" id="L98">            var packageVersion = getInputPackageVersion();</span>
-<span class="fc" id="L99">            var releaseBranchName = getReleaseBranchName();</span>
-<span class="fc" id="L100">            var runBranchName = getRunReleaseBranchName();</span>
+<span class="fc" id="L105">            var packageVersion = getInputPackageVersion();</span>
+<span class="fc" id="L106">            var releaseBranchName = getReleaseBranchName();</span>
+<span class="fc" id="L107">            var runBranchName = getRunReleaseBranchName();</span>
 
             // Trace parameters
-<span class="fc" id="L103">            ghActionsKit.debug(String.format(&quot;parameters: [package_version: %s]&quot;, packageVersion));</span>
+<span class="fc" id="L110">            ghActionsKit.debug(String.format(&quot;parameters: [package_version: %s]&quot;, packageVersion));</span>
 
             // Get release version
-<span class="fc" id="L106">            var releaseVersion = getReleaseVersion(packageVersion, releaseBranchName);</span>
-<span class="fc" id="L107">            var semverReleaseVersion = getSemverVersion(releaseVersion);</span>
+<span class="fc" id="L113">            var releaseVersion = getReleaseVersion(packageVersion, releaseBranchName);</span>
+<span class="fc" id="L114">            var semverReleaseVersion = getSemverVersion(releaseVersion);</span>
 
             // Read GitHub repository.
-<span class="fc" id="L110">            connectApi();</span>
+<span class="fc" id="L117">            connectApi();</span>
 
             // Retrieve repository
-<span class="fc" id="L113">            ghRepository = ghApi.getRepository(ghActionsKit.getGitHubRepository());</span>
+<span class="fc" id="L120">            ghRepository = ghApi.getRepository(ghActionsKit.getGitHubRepository());</span>
 
             // Get repository tags.
-<span class="fc" id="L116">            var tagsByVersion = getTags();</span>
+<span class="fc" id="L123">            var tagsByVersion = getValidSemverTags();</span>
 
             // Ensure a tag with this version does not exist.
-<span class="fc bfc" id="L119" title="All 2 branches covered.">            if (tagsByVersion.containsKey(releaseVersion.toLowerCase())) {</span>
-<span class="fc" id="L120">                throw new IllegalArgumentException(String.format(&quot;a tag for version %s already exists in the repository.&quot;, releaseVersion));</span>
+<span class="fc bfc" id="L126" title="All 2 branches covered.">            if (tagsByVersion.containsKey(releaseVersion.toLowerCase(Locale.ROOT))) {</span>
+<span class="fc" id="L127">                throw new IllegalArgumentException(</span>
+<span class="fc" id="L128">                        String.format(&quot;a tag for version %s already exists in the repository.&quot;, releaseVersion));</span>
             }
 
             // verify if this releases are the latest version
-<span class="fc" id="L124">            boolean isLatestMajorVersion = isLatestMajorVersion(releaseVersion, tagsByVersion.keySet());</span>
-<span class="fc" id="L125">            boolean isLatestMajorMinorVersion = isLatestMajorMinorVersion(releaseVersion, tagsByVersion.keySet());</span>
-<span class="fc" id="L126">            boolean isLatestMajorMinorPatchVersion = isLatestMajorMinorPatchVersion(releaseVersion, tagsByVersion.keySet());</span>
+<span class="fc" id="L132">            boolean isLatestMajorVersion = isLatestMajorVersion(releaseVersion, tagsByVersion.keySet());</span>
+<span class="fc" id="L133">            boolean isLatestMajorMinorVersion = isLatestMajorMinorVersion(releaseVersion, tagsByVersion.keySet());</span>
+<span class="fc" id="L134">            boolean isLatestMajorMinorPatchVersion =</span>
+<span class="fc" id="L135">                    isLatestMajorMinorPatchVersion(releaseVersion, tagsByVersion.keySet());</span>
 
             // Parse version
-<span class="fc" id="L129">            var valueVersion = semverReleaseVersion.getValue();</span>
-<span class="fc" id="L130">            var majorVersion = String.valueOf(semverReleaseVersion.getMajor());</span>
-<span class="fc" id="L131">            var majorAndMinorVersion = StringUtils.join(semverReleaseVersion.getMajor(), &quot;.&quot;, semverReleaseVersion.getMinor());</span>
-<span class="fc" id="L132">            var majorAndMinorAndPatchVersion = StringUtils.join(semverReleaseVersion.getMajor(), &quot;.&quot;, semverReleaseVersion.getMinor(), &quot;.&quot;, semverReleaseVersion.getPatch());</span>
-<span class="fc" id="L133">            var minorVersion = String.valueOf(semverReleaseVersion.getMinor());</span>
-<span class="fc" id="L134">            var patchVersion = String.valueOf(semverReleaseVersion.getPatch());</span>
-<span class="fc bfc" id="L135" title="All 2 branches covered.">            var suffixVersion = semverReleaseVersion.getSuffixTokens().length &gt; 0 ? StringUtils.join(semverReleaseVersion.getSuffixTokens(), &quot;.&quot;) : null;</span>
-<span class="fc" id="L136">            var buildVersion = semverReleaseVersion.getBuild();</span>
+<span class="fc" id="L138">            var valueVersion = semverReleaseVersion.getValue();</span>
+<span class="fc" id="L139">            var majorVersion = String.valueOf(semverReleaseVersion.getMajor());</span>
+<span class="fc" id="L140">            var majorAndMinorVersion =</span>
+<span class="fc" id="L141">                    StringUtils.join(semverReleaseVersion.getMajor(), &quot;.&quot;, semverReleaseVersion.getMinor());</span>
+<span class="fc" id="L142">            var majorAndMinorAndPatchVersion = StringUtils.join(</span>
+<span class="fc" id="L143">                    semverReleaseVersion.getMajor(),</span>
+                    &quot;.&quot;,
+<span class="fc" id="L145">                    semverReleaseVersion.getMinor(),</span>
+                    &quot;.&quot;,
+<span class="fc" id="L147">                    semverReleaseVersion.getPatch());</span>
+<span class="fc" id="L148">            var minorVersion = String.valueOf(semverReleaseVersion.getMinor());</span>
+<span class="fc" id="L149">            var patchVersion = String.valueOf(semverReleaseVersion.getPatch());</span>
+<span class="fc" id="L150">            String suffixVersion = null;</span>
+<span class="fc bfc" id="L151" title="All 2 branches covered.">            if (semverReleaseVersion.getSuffixTokens().length &gt; 0) {</span>
+<span class="fc" id="L152">                suffixVersion = StringUtils.join(semverReleaseVersion.getSuffixTokens(), &quot;.&quot;);</span>
+            }
+<span class="fc" id="L154">            var buildVersion = semverReleaseVersion.getBuild();</span>
 
             // Get target branch
-<span class="fc" id="L139">            String targetBranch = getMaintenanceBranchName(releaseVersion).orElse(Optional.ofNullable(ghRepository.getDefaultBranch()).orElseThrow());</span>
+<span class="fc" id="L157">            String targetBranch = getMaintenanceBranchName(releaseVersion)</span>
+<span class="fc" id="L158">                    .orElse(Optional.ofNullable(ghRepository.getDefaultBranch()).orElseThrow());</span>
 
             // Set output variables.
             // -- release version
-<span class="fc" id="L143">            this.ghActionsKit.setOutput(OutputVars.VERSION.key(), valueVersion);</span>
-<span class="fc" id="L144">            this.ghActionsKit.setOutput(OutputVars.VERSION_MAJOR.key(), majorVersion);</span>
-<span class="fc" id="L145">            this.ghActionsKit.setOutput(OutputVars.VERSION_MINOR.key(), minorVersion);</span>
-<span class="fc" id="L146">            this.ghActionsKit.setOutput(OutputVars.VERSION_PATCH.key(), patchVersion);</span>
-<span class="fc" id="L147">            this.ghActionsKit.setOptionalOutput(OutputVars.VERSION_SUFFIX.key(), Optional.ofNullable(suffixVersion));</span>
-<span class="fc" id="L148">            this.ghActionsKit.setOptionalOutput(OutputVars.VERSION_BUILD.key(), Optional.ofNullable(buildVersion));</span>
+<span class="fc" id="L162">            this.ghActionsKit.setOutput(OutputVars.VERSION.key(), valueVersion);</span>
+<span class="fc" id="L163">            this.ghActionsKit.setOutput(OutputVars.VERSION_MAJOR.key(), majorVersion);</span>
+<span class="fc" id="L164">            this.ghActionsKit.setOutput(OutputVars.VERSION_MINOR.key(), minorVersion);</span>
+<span class="fc" id="L165">            this.ghActionsKit.setOutput(OutputVars.VERSION_PATCH.key(), patchVersion);</span>
+<span class="fc" id="L166">            this.ghActionsKit.setOptionalOutput(OutputVars.VERSION_SUFFIX.key(), Optional.ofNullable(suffixVersion));</span>
+<span class="fc" id="L167">            this.ghActionsKit.setOptionalOutput(OutputVars.VERSION_BUILD.key(), Optional.ofNullable(buildVersion));</span>
 
-<span class="fc" id="L150">            this.ghActionsKit.setOutput(OutputVars.GIT_TAG.key(), gitTag(valueVersion));</span>
-<span class="fc" id="L151">            this.ghActionsKit.setOptionalOutput(OutputVars.GIT_TAG_MAJOR.key(), Optional.of(isLatestMajorVersion).filter(Boolean.TRUE::equals).map(v -&gt; gitTag(majorVersion)));</span>
-<span class="fc" id="L152">            this.ghActionsKit.setOptionalOutput(OutputVars.GIT_TAG_MINOR.key(), Optional.of(isLatestMajorMinorVersion).filter(Boolean.TRUE::equals).map(v -&gt; gitTag(majorAndMinorVersion)));</span>
-<span class="fc" id="L153">            this.ghActionsKit.setOptionalOutput(OutputVars.GIT_TAG_PATCH.key(), Optional.of(isLatestMajorMinorPatchVersion).filter(Boolean.TRUE::equals).map(v -&gt; gitTag(majorAndMinorAndPatchVersion)));</span>
+<span class="fc" id="L169">            this.ghActionsKit.setOutput(OutputVars.GIT_TAG.key(), gitTag(valueVersion));</span>
+<span class="fc" id="L170">            this.ghActionsKit.setOptionalOutput(</span>
+<span class="fc" id="L171">                    OutputVars.GIT_TAG_MAJOR.key(),</span>
+<span class="fc" id="L172">                    Optional.of(isLatestMajorVersion)</span>
+<span class="fc" id="L173">                            .filter(Boolean.TRUE::equals)</span>
+<span class="fc" id="L174">                            .map(v -&gt; gitTag(majorVersion)));</span>
+<span class="fc" id="L175">            this.ghActionsKit.setOptionalOutput(</span>
+<span class="fc" id="L176">                    OutputVars.GIT_TAG_MINOR.key(),</span>
+<span class="fc" id="L177">                    Optional.of(isLatestMajorMinorVersion)</span>
+<span class="fc" id="L178">                            .filter(Boolean.TRUE::equals)</span>
+<span class="fc" id="L179">                            .map(v -&gt; gitTag(majorAndMinorVersion)));</span>
+<span class="fc" id="L180">            this.ghActionsKit.setOptionalOutput(</span>
+<span class="fc" id="L181">                    OutputVars.GIT_TAG_PATCH.key(),</span>
+<span class="fc" id="L182">                    Optional.of(isLatestMajorMinorPatchVersion)</span>
+<span class="fc" id="L183">                            .filter(Boolean.TRUE::equals)</span>
+<span class="fc" id="L184">                            .map(v -&gt; gitTag(majorAndMinorAndPatchVersion)));</span>
 
-<span class="fc" id="L155">            this.ghActionsKit.setOutput(OutputVars.DOCKER_TAG.key(), valueVersion);</span>
-<span class="fc" id="L156">            this.ghActionsKit.setOptionalOutput(OutputVars.DOCKER_TAG_MAJOR.key(), Optional.of(isLatestMajorVersion).filter(Boolean.TRUE::equals).map(v -&gt; majorVersion));</span>
-<span class="fc" id="L157">            this.ghActionsKit.setOptionalOutput(OutputVars.DOCKER_TAG_MINOR.key(), Optional.of(isLatestMajorMinorVersion).filter(Boolean.TRUE::equals).map(v -&gt; majorAndMinorVersion));</span>
-<span class="fc" id="L158">            this.ghActionsKit.setOptionalOutput(OutputVars.DOCKER_TAG_PATCH.key(), Optional.of(isLatestMajorMinorPatchVersion).filter(Boolean.TRUE::equals).map(v -&gt; majorAndMinorAndPatchVersion));</span>
+<span class="fc" id="L186">            this.ghActionsKit.setOutput(OutputVars.DOCKER_TAG.key(), valueVersion);</span>
+<span class="fc" id="L187">            this.ghActionsKit.setOptionalOutput(</span>
+<span class="fc" id="L188">                    OutputVars.DOCKER_TAG_MAJOR.key(),</span>
+<span class="fc" id="L189">                    Optional.of(isLatestMajorVersion)</span>
+<span class="fc" id="L190">                            .filter(Boolean.TRUE::equals)</span>
+<span class="fc" id="L191">                            .map(v -&gt; majorVersion));</span>
+<span class="fc" id="L192">            this.ghActionsKit.setOptionalOutput(</span>
+<span class="fc" id="L193">                    OutputVars.DOCKER_TAG_MINOR.key(),</span>
+<span class="fc" id="L194">                    Optional.of(isLatestMajorMinorVersion)</span>
+<span class="fc" id="L195">                            .filter(Boolean.TRUE::equals)</span>
+<span class="fc" id="L196">                            .map(v -&gt; majorAndMinorVersion));</span>
+<span class="fc" id="L197">            this.ghActionsKit.setOptionalOutput(</span>
+<span class="fc" id="L198">                    OutputVars.DOCKER_TAG_PATCH.key(),</span>
+<span class="fc" id="L199">                    Optional.of(isLatestMajorMinorPatchVersion)</span>
+<span class="fc" id="L200">                            .filter(Boolean.TRUE::equals)</span>
+<span class="fc" id="L201">                            .map(v -&gt; majorAndMinorAndPatchVersion));</span>
 
             // -- next version
-<span class="fc" id="L161">            this.ghActionsKit.setOutput(OutputVars.NEXT_MAJOR_VERSION.key(), semverReleaseVersion.nextMajor().getValue());</span>
-<span class="fc" id="L162">            this.ghActionsKit.setOutput(OutputVars.NEXT_MINOR_VERSION.key(), semverReleaseVersion.nextMinor().getValue());</span>
-<span class="fc" id="L163">            this.ghActionsKit.setOutput(OutputVars.NEXT_PATCH_VERSION.key(), semverReleaseVersion.nextPatch().getValue());</span>
-<span class="fc" id="L164">            this.ghActionsKit.setOutput(OutputVars.NEXT_MAJOR_SNAPSHOT_VERSION.key(), semverReleaseVersion.nextMajor().withSuffix(SNAPSHOT_SUFFIX).getValue());</span>
-<span class="fc" id="L165">            this.ghActionsKit.setOutput(OutputVars.NEXT_MINOR_SNAPSHOT_VERSION.key(), semverReleaseVersion.nextMinor().withSuffix(SNAPSHOT_SUFFIX).getValue());</span>
-<span class="fc" id="L166">            this.ghActionsKit.setOutput(OutputVars.NEXT_PATCH_SNAPSHOT_VERSION.key(), semverReleaseVersion.nextPatch().withSuffix(SNAPSHOT_SUFFIX).getValue());</span>
+<span class="fc" id="L204">            this.ghActionsKit.setOutput(</span>
+<span class="fc" id="L205">                    OutputVars.NEXT_MAJOR_VERSION.key(),</span>
+<span class="fc" id="L206">                    semverReleaseVersion.nextMajor().getValue());</span>
+<span class="fc" id="L207">            this.ghActionsKit.setOutput(</span>
+<span class="fc" id="L208">                    OutputVars.NEXT_MINOR_VERSION.key(),</span>
+<span class="fc" id="L209">                    semverReleaseVersion.nextMinor().getValue());</span>
+<span class="fc" id="L210">            this.ghActionsKit.setOutput(</span>
+<span class="fc" id="L211">                    OutputVars.NEXT_PATCH_VERSION.key(),</span>
+<span class="fc" id="L212">                    semverReleaseVersion.nextPatch().getValue());</span>
+<span class="fc" id="L213">            this.ghActionsKit.setOutput(</span>
+<span class="fc" id="L214">                    OutputVars.NEXT_MAJOR_SNAPSHOT_VERSION.key(),</span>
+<span class="fc" id="L215">                    semverReleaseVersion.nextMajor().withSuffix(SNAPSHOT_SUFFIX).getValue());</span>
+<span class="fc" id="L216">            this.ghActionsKit.setOutput(</span>
+<span class="fc" id="L217">                    OutputVars.NEXT_MINOR_SNAPSHOT_VERSION.key(),</span>
+<span class="fc" id="L218">                    semverReleaseVersion.nextMinor().withSuffix(SNAPSHOT_SUFFIX).getValue());</span>
+<span class="fc" id="L219">            this.ghActionsKit.setOutput(</span>
+<span class="fc" id="L220">                    OutputVars.NEXT_PATCH_SNAPSHOT_VERSION.key(),</span>
+<span class="fc" id="L221">                    semverReleaseVersion.nextPatch().withSuffix(SNAPSHOT_SUFFIX).getValue());</span>
 
             // -- branch
-<span class="fc" id="L169">            this.ghActionsKit.setOutput(OutputVars.TRIGGER_BRANCH.key(), releaseBranchName);</span>
-<span class="fc" id="L170">            this.ghActionsKit.setOutput(OutputVars.TRIGGER_BRANCH_REF.key(), branchRef(releaseBranchName));</span>
-<span class="fc" id="L171">            this.ghActionsKit.setOutput(OutputVars.RUN_BRANCH.key(), runBranchName);</span>
-<span class="fc" id="L172">            this.ghActionsKit.setOutput(OutputVars.RUN_BRANCH_REF.key(), branchRef(runBranchName));</span>
-<span class="fc" id="L173">            this.ghActionsKit.setOutput(OutputVars.TARGET_BRANCH.key(), targetBranch);</span>
-<span class="fc" id="L174">            this.ghActionsKit.setOutput(OutputVars.TARGET_BRANCH_REF.key(), branchRef(targetBranch));</span>
-<span class="fc" id="L175">        } catch (Exception e) {</span>
-<span class="fc" id="L176">            throw new CompletionException(e);</span>
-<span class="fc" id="L177">        }</span>
-<span class="fc" id="L178">    }</span>
+<span class="fc" id="L224">            this.ghActionsKit.setOutput(OutputVars.TRIGGER_BRANCH.key(), releaseBranchName);</span>
+<span class="fc" id="L225">            this.ghActionsKit.setOutput(OutputVars.TRIGGER_BRANCH_REF.key(), branchRef(releaseBranchName));</span>
+<span class="fc" id="L226">            this.ghActionsKit.setOutput(OutputVars.RUN_BRANCH.key(), runBranchName);</span>
+<span class="fc" id="L227">            this.ghActionsKit.setOutput(OutputVars.RUN_BRANCH_REF.key(), branchRef(runBranchName));</span>
+<span class="fc" id="L228">            this.ghActionsKit.setOutput(OutputVars.TARGET_BRANCH.key(), targetBranch);</span>
+<span class="fc" id="L229">            this.ghActionsKit.setOutput(OutputVars.TARGET_BRANCH_REF.key(), branchRef(targetBranch));</span>
+<span class="fc" id="L230">        } catch (Exception e) {</span>
+<span class="fc" id="L231">            throw new CompletionException(e);</span>
+<span class="fc" id="L232">        }</span>
+<span class="fc" id="L233">    }</span>
 
     // ------------------------------------------ Utility methods.
 
@@ -184,7 +239,9 @@ import me.julb.sdk.github.actions.spi.GitHubActionProvider;
      * @return the &quot;package_version&quot; input.
      */
     Optional&lt;String&gt; getInputPackageVersion() {
-<span class="fc" id="L187">        return ghActionsKit.getInput(&quot;package_version&quot;).map(v -&gt; v.replaceFirst(&quot;^v&quot;, &quot;&quot;));</span>
+<span class="fc" id="L242">        return ghActionsKit</span>
+<span class="fc" id="L243">                .getInput(&quot;package_version&quot;)</span>
+<span class="fc" id="L244">                .map(v -&gt; STARTS_WITH_V_PATTERN.matcher(v).replaceFirst(&quot;&quot;));</span>
     }
 
     /**
@@ -192,10 +249,10 @@ import me.julb.sdk.github.actions.spi.GitHubActionProvider;
      * @return the release branch name.
      */
     String getReleaseBranchName() {
-<span class="fc bfc" id="L195" title="All 2 branches covered.">        if (ghActionsKit.isGitHubRefTypeBranch()) {</span>
-<span class="fc" id="L196">            return ghActionsKit.getGitHubRefName();</span>
+<span class="fc bfc" id="L252" title="All 2 branches covered.">        if (ghActionsKit.isGitHubRefTypeBranch()) {</span>
+<span class="fc" id="L253">            return ghActionsKit.getGitHubRefName();</span>
         } else {
-<span class="fc" id="L198">            throw new IllegalArgumentException(&quot;GITHUB_REF should be a branch.&quot;);</span>
+<span class="fc" id="L255">            throw new IllegalArgumentException(&quot;GITHUB_REF should be a branch.&quot;);</span>
         }
     }
 
@@ -204,7 +261,7 @@ import me.julb.sdk.github.actions.spi.GitHubActionProvider;
      * @return the run release branch name.
      */
     String getRunReleaseBranchName() {
-<span class="fc" id="L207">        return String.format(&quot;releases/run-%s&quot;, this.ghActionsKit.getGitHubRunId());</span>
+<span class="fc" id="L264">        return String.format(&quot;releases/run-%s&quot;, this.ghActionsKit.getGitHubRunId());</span>
     }
 
     /**
@@ -213,12 +270,12 @@ import me.julb.sdk.github.actions.spi.GitHubActionProvider;
      * @param releaseBranchName the release branch name.
      * @return the release version.
      */
-<span class="fc bfc" id="L216" title="All 4 branches covered.">    String getReleaseVersion(@NonNull Optional&lt;String&gt; packageVersion, @NonNull String releaseBranchName) {</span>
-<span class="fc" id="L217">        var matcher = TRIGGER_RELEASE_BRANCH_PATTERN.matcher(releaseBranchName);</span>
-<span class="fc bfc" id="L218" title="All 2 branches covered.">        if (matcher.matches()) {</span>
-<span class="fc" id="L219">            return Optional.ofNullable(matcher.group(&quot;version&quot;)).orElse(packageVersion.orElseThrow());</span>
+<span class="fc bfc" id="L273" title="All 4 branches covered.">    String getReleaseVersion(@NonNull Optional&lt;String&gt; packageVersion, @NonNull String releaseBranchName) {</span>
+<span class="fc" id="L274">        var matcher = TRIGGER_RELEASE_BRANCH_PATTERN.matcher(releaseBranchName);</span>
+<span class="fc bfc" id="L275" title="All 2 branches covered.">        if (matcher.matches()) {</span>
+<span class="fc" id="L276">            return Optional.ofNullable(matcher.group(&quot;version&quot;)).orElse(packageVersion.orElseThrow());</span>
         } else {
-<span class="fc" id="L221">            throw new IllegalArgumentException(&quot;GITHUB_REF shoud match releases/trigger(-&lt;version&gt;)? format.&quot;);</span>
+<span class="fc" id="L278">            throw new IllegalArgumentException(&quot;GITHUB_REF shoud match releases/trigger(-&lt;version&gt;)? format.&quot;);</span>
         }
     }
 
@@ -228,11 +285,11 @@ import me.julb.sdk.github.actions.spi.GitHubActionProvider;
      * @return the semver object for that version.
      * @throws IllegalArgumentException if the version is not semver-valid.
      */
-<span class="fc bfc" id="L231" title="All 2 branches covered.">    Semver getSemverVersion(@NonNull String version) {</span>
+<span class="fc bfc" id="L288" title="All 2 branches covered.">    Semver getSemverVersion(@NonNull String version) {</span>
         try {
-<span class="fc" id="L233">            return new Semver(version);</span>
-<span class="fc" id="L234">        } catch (SemverException e) {</span>
-<span class="fc" id="L235">            throw new IllegalArgumentException(e);</span>
+<span class="fc" id="L290">            return new Semver(version);</span>
+<span class="fc" id="L291">        } catch (SemverException e) {</span>
+<span class="fc" id="L292">            throw new IllegalArgumentException(e);</span>
         }
     }
 
@@ -240,22 +297,22 @@ import me.julb.sdk.github.actions.spi.GitHubActionProvider;
      * Connects to GitHub API.
      * @throws IOException if an error occurs.
      */
-    void connectApi()
-        throws IOException {
-<span class="fc" id="L245">        ghActionsKit.debug(&quot;github api url connection: check.&quot;);</span>
+    void connectApi() throws IOException {
+<span class="fc" id="L301">        ghActionsKit.debug(&quot;github api url connection: check.&quot;);</span>
 
         // Get token
-<span class="fc" id="L248">        var githubToken = ghActionsKit.getRequiredEnv(&quot;GITHUB_TOKEN&quot;);</span>
+<span class="fc" id="L304">        var githubToken = ghActionsKit.getRequiredEnv(&quot;GITHUB_TOKEN&quot;);</span>
 
-        //@formatter:off
-<span class="fc" id="L251">        ghApi = Optional.ofNullable(ghApi).orElse(new GitHubBuilder()</span>
-<span class="fc" id="L252">            .withEndpoint(ghActionsKit.getGitHubApiUrl())</span>
-<span class="fc" id="L253">            .withOAuthToken(githubToken)</span>
-<span class="fc" id="L254">            .build());</span>
-<span class="fc" id="L255">        ghApi.checkApiUrlValidity();</span>
-<span class="fc" id="L256">        ghActionsKit.debug(&quot;github api url connection: ok.&quot;);</span>
-        //@formatter:on
-<span class="fc" id="L258">    }</span>
+        // @formatter:off
+<span class="fc" id="L307">        ghApi = Optional.ofNullable(ghApi)</span>
+<span class="fc" id="L308">                .orElse(new GitHubBuilder()</span>
+<span class="fc" id="L309">                        .withEndpoint(ghActionsKit.getGitHubApiUrl())</span>
+<span class="fc" id="L310">                        .withOAuthToken(githubToken)</span>
+<span class="fc" id="L311">                        .build());</span>
+<span class="fc" id="L312">        ghApi.checkApiUrlValidity();</span>
+<span class="fc" id="L313">        ghActionsKit.debug(&quot;github api url connection: ok.&quot;);</span>
+        // @formatter:on
+<span class="fc" id="L315">    }</span>
 
     /**
      * Gets the maintenance branch name matching this release version.
@@ -263,26 +320,26 @@ import me.julb.sdk.github.actions.spi.GitHubActionProvider;
      * @return the maintenance branch name matching this release version, or {@link Optional#empty()} otherwise.
      * @throws IOException if an error occurs.
      */
-<span class="fc bfc" id="L266" title="All 2 branches covered.">    Optional&lt;String&gt; getMaintenanceBranchName(@NonNull String releaseVersion)</span>
-        throws IOException {
+<span class="fc bfc" id="L323" title="All 2 branches covered.">    Optional&lt;String&gt; getMaintenanceBranchName(@NonNull String releaseVersion) throws IOException {</span>
         // Get semver version
-<span class="fc" id="L269">        var currentSemverVersion = new Semver(releaseVersion);</span>
+<span class="fc" id="L325">        var currentSemverVersion = new Semver(releaseVersion);</span>
 
         // Parse branches.
-<span class="fc" id="L272">        var branches = ghRepository.getBranches().keySet();</span>
-<span class="fc bfc" id="L273" title="All 2 branches covered.">        for (String branch : branches) {</span>
-<span class="fc" id="L274">            var matcher = MAINTENANCE_BRANCH_PATTERN.matcher(branch);</span>
+<span class="fc" id="L328">        var branches = ghRepository.getBranches().keySet();</span>
+<span class="fc bfc" id="L329" title="All 2 branches covered.">        for (String branch : branches) {</span>
+<span class="fc" id="L330">            var matcher = MAINTENANCE_BRANCH_PATTERN.matcher(branch);</span>
 
-            //@formatter:off
-<span class="fc bfc" id="L277" title="All 2 branches covered.">            if (matcher.matches()</span>
-<span class="fc bfc" id="L278" title="All 2 branches covered.">                &amp;&amp; Integer.valueOf(matcher.group(&quot;major&quot;)).equals(currentSemverVersion.getMajor()) </span>
-<span class="fc bfc" id="L279" title="All 4 branches covered.">                &amp;&amp; (matcher.group(&quot;minor&quot;) == null || Integer.valueOf(matcher.group(&quot;minor&quot;)).equals(currentSemverVersion.getMinor()))) {</span>
-<span class="fc" id="L280">                return Optional.of(branch);</span>
+            // @formatter:off
+<span class="fc bfc" id="L333" title="All 2 branches covered.">            if (matcher.matches()</span>
+<span class="fc bfc" id="L334" title="All 2 branches covered.">                    &amp;&amp; Integer.valueOf(matcher.group(&quot;major&quot;)).equals(currentSemverVersion.getMajor())</span>
+<span class="fc bfc" id="L335" title="All 2 branches covered.">                    &amp;&amp; (matcher.group(&quot;minor&quot;) == null</span>
+<span class="fc bfc" id="L336" title="All 2 branches covered.">                            || Integer.valueOf(matcher.group(&quot;minor&quot;)).equals(currentSemverVersion.getMinor()))) {</span>
+<span class="fc" id="L337">                return Optional.of(branch);</span>
             }
-            //@formatter:on
-<span class="fc" id="L283">        }</span>
+            // @formatter:on
+<span class="fc" id="L340">        }</span>
 
-<span class="fc" id="L285">        return Optional.empty();</span>
+<span class="fc" id="L342">        return Optional.empty();</span>
     }
 
     /**
@@ -290,92 +347,107 @@ import me.julb.sdk.github.actions.spi.GitHubActionProvider;
      * @return the tags of the given repository.
      * @throws IOException if an error occurs.
      */
-    Map&lt;String, GHTag&gt; getTags()
-        throws IOException {
-<span class="fc" id="L295">        var tags = new HashMap&lt;String, GHTag&gt;();</span>
-<span class="fc bfc" id="L296" title="All 2 branches covered.">        for (GHTag ghTag : ghRepository.listTags()) {</span>
-<span class="fc" id="L297">            var tagName = ghTag.getName().toLowerCase().replaceFirst(&quot;^v&quot;, &quot;&quot;);</span>
-<span class="fc" id="L298">            tags.put(tagName, ghTag);</span>
-<span class="fc" id="L299">        }</span>
-<span class="fc" id="L300">        return tags;</span>
+    Map&lt;String, GHTag&gt; getValidSemverTags() throws IOException {
+<span class="fc" id="L351">        var tags = new HashMap&lt;String, GHTag&gt;();</span>
+<span class="fc bfc" id="L352" title="All 2 branches covered.">        for (GHTag ghTag : ghRepository.listTags()) {</span>
+<span class="fc" id="L353">            var tagName = STARTS_WITH_V_PATTERN</span>
+<span class="fc" id="L354">                    .matcher(ghTag.getName().toLowerCase(Locale.ROOT))</span>
+<span class="fc" id="L355">                    .replaceFirst(&quot;&quot;);</span>
+            try {
+<span class="fc" id="L357">                new Semver(tagName);</span>
+<span class="fc" id="L358">                tags.put(tagName, ghTag);</span>
+<span class="fc" id="L359">            } catch (SemverException e) {</span>
+                // NOOP
+<span class="fc" id="L361">            }</span>
+<span class="fc" id="L362">        }</span>
+<span class="fc" id="L363">        return tags;</span>
     }
 
     /**
-     * Returns &lt;code&gt;true&lt;/code&gt; if the version is the latest under major version scopes, &lt;code&gt;false&lt;/code&gt; otherwise.
+     * Returns &lt;code&gt;true&lt;/code&gt; if the version is the latest under major version scopes,
+     *  &lt;code&gt;false&lt;/code&gt; otherwise.
      * @param version the version.
      * @param taggedVersions the list of versions to check.
-     * @return &lt;code&gt;true&lt;/code&gt; if the version is the latest under major version scopes, &lt;code&gt;false&lt;/code&gt; otherwise.
+     * @return &lt;code&gt;true&lt;/code&gt; if the version is the latest under major version scopes,
+     *  &lt;code&gt;false&lt;/code&gt; otherwise.
      */
-<span class="fc bfc" id="L309" title="All 4 branches covered.">    boolean isLatestMajorVersion(@NonNull String version, @NonNull Collection&lt;String&gt; taggedVersions) {</span>
+<span class="fc bfc" id="L374" title="All 4 branches covered.">    boolean isLatestMajorVersion(@NonNull String version, @NonNull Collection&lt;String&gt; taggedVersions) {</span>
         // list that holds all versions sharing major.
-<span class="fc" id="L311">        var semverVersions = new TreeSet&lt;&gt;();</span>
+<span class="fc" id="L376">        var semverVersions = new TreeSet&lt;&gt;();</span>
 
         // add current version
-<span class="fc" id="L314">        var currentSemverVersion = new Semver(version);</span>
-<span class="fc" id="L315">        semverVersions.add(currentSemverVersion);</span>
+<span class="fc" id="L379">        var currentSemverVersion = new Semver(version);</span>
+<span class="fc" id="L380">        semverVersions.add(currentSemverVersion);</span>
 
         // add all other versions sharing the same major version
-<span class="fc bfc" id="L318" title="All 2 branches covered.">        for (String taggedVersion : taggedVersions) {</span>
-<span class="fc" id="L319">            var semverTaggedVersion = new Semver(taggedVersion);</span>
-<span class="fc bfc" id="L320" title="All 2 branches covered.">            if (semverTaggedVersion.getMajor().equals(currentSemverVersion.getMajor())) {</span>
-<span class="fc" id="L321">                semverVersions.add(semverTaggedVersion);</span>
+<span class="fc bfc" id="L383" title="All 2 branches covered.">        for (String taggedVersion : taggedVersions) {</span>
+<span class="fc" id="L384">            var semverTaggedVersion = new Semver(taggedVersion);</span>
+<span class="fc bfc" id="L385" title="All 2 branches covered.">            if (semverTaggedVersion.getMajor().equals(currentSemverVersion.getMajor())) {</span>
+<span class="fc" id="L386">                semverVersions.add(semverTaggedVersion);</span>
             }
-<span class="fc" id="L323">        }</span>
+<span class="fc" id="L388">        }</span>
 
         // last item is the latest one.
-<span class="fc" id="L326">        return semverVersions.last().equals(currentSemverVersion);</span>
+<span class="fc" id="L391">        return semverVersions.last().equals(currentSemverVersion);</span>
     }
 
     /**
-     * Returns &lt;code&gt;true&lt;/code&gt; if the version is the latest under major.minor version scope, &lt;code&gt;false&lt;/code&gt; otherwise.
+     * Returns &lt;code&gt;true&lt;/code&gt; if the version is the latest under major.minor version scope,
+     *  &lt;code&gt;false&lt;/code&gt; otherwise.
      * @param version the version.
      * @param taggedVersions the list of versions to check.
-     * @return &lt;code&gt;true&lt;/code&gt; if the version is the latest under major.minor version scope, &lt;code&gt;false&lt;/code&gt; otherwise.
+     * @return &lt;code&gt;true&lt;/code&gt; if the version is the latest under major.minor version scope,
+     *  &lt;code&gt;false&lt;/code&gt; otherwise.
      */
-<span class="fc bfc" id="L335" title="All 4 branches covered.">    boolean isLatestMajorMinorVersion(@NonNull String version, @NonNull Collection&lt;String&gt; taggedVersions) {</span>
+<span class="fc bfc" id="L402" title="All 4 branches covered.">    boolean isLatestMajorMinorVersion(@NonNull String version, @NonNull Collection&lt;String&gt; taggedVersions) {</span>
         // list that holds all versions sharing major/minor.
-<span class="fc" id="L337">        var semverVersions = new TreeSet&lt;&gt;();</span>
+<span class="fc" id="L404">        var semverVersions = new TreeSet&lt;&gt;();</span>
 
         // add current version
-<span class="fc" id="L340">        var currentSemverVersion = new Semver(version);</span>
-<span class="fc" id="L341">        semverVersions.add(currentSemverVersion);</span>
+<span class="fc" id="L407">        var currentSemverVersion = new Semver(version);</span>
+<span class="fc" id="L408">        semverVersions.add(currentSemverVersion);</span>
 
         // add all other versions sharing the same major/minor version
-<span class="fc bfc" id="L344" title="All 2 branches covered.">        for (String taggedVersion : taggedVersions) {</span>
-<span class="fc" id="L345">            var semverTaggedVersion = new Semver(taggedVersion);</span>
-<span class="fc bfc" id="L346" title="All 4 branches covered.">            if (semverTaggedVersion.getMajor().equals(currentSemverVersion.getMajor()) &amp;&amp; semverTaggedVersion.getMinor().equals(currentSemverVersion.getMinor())) {</span>
-<span class="fc" id="L347">                semverVersions.add(semverTaggedVersion);</span>
+<span class="fc bfc" id="L411" title="All 2 branches covered.">        for (String taggedVersion : taggedVersions) {</span>
+<span class="fc" id="L412">            var semverTaggedVersion = new Semver(taggedVersion);</span>
+<span class="fc bfc" id="L413" title="All 2 branches covered.">            if (semverTaggedVersion.getMajor().equals(currentSemverVersion.getMajor())</span>
+<span class="fc bfc" id="L414" title="All 2 branches covered.">                    &amp;&amp; semverTaggedVersion.getMinor().equals(currentSemverVersion.getMinor())) {</span>
+<span class="fc" id="L415">                semverVersions.add(semverTaggedVersion);</span>
             }
-<span class="fc" id="L349">        }</span>
+<span class="fc" id="L417">        }</span>
 
         // last item is the latest one.
-<span class="fc" id="L352">        return semverVersions.last().equals(currentSemverVersion);</span>
+<span class="fc" id="L420">        return semverVersions.last().equals(currentSemverVersion);</span>
     }
 
     /**
-     * Returns &lt;code&gt;true&lt;/code&gt; if the version is the latest under major.minor.patch version scope, &lt;code&gt;false&lt;/code&gt; otherwise.
+     * Returns &lt;code&gt;true&lt;/code&gt; if the version is the latest under major.minor.patch version scope,
+     *  &lt;code&gt;false&lt;/code&gt; otherwise.
      * @param version the version.
      * @param taggedVersions the list of versions to check.
-     * @return &lt;code&gt;true&lt;/code&gt; if the version is the latest under major.minor.patch version scope, &lt;code&gt;false&lt;/code&gt; otherwise.
+     * @return &lt;code&gt;true&lt;/code&gt; if the version is the latest under major.minor.patch version scope,
+     *  &lt;code&gt;false&lt;/code&gt; otherwise.
      */
-<span class="fc bfc" id="L361" title="All 4 branches covered.">    boolean isLatestMajorMinorPatchVersion(@NonNull String version, @NonNull Collection&lt;String&gt; taggedVersions) {</span>
+<span class="fc bfc" id="L431" title="All 4 branches covered.">    boolean isLatestMajorMinorPatchVersion(@NonNull String version, @NonNull Collection&lt;String&gt; taggedVersions) {</span>
         // list that holds all versions sharing major/minor.
-<span class="fc" id="L363">        var semverVersions = new TreeSet&lt;&gt;();</span>
+<span class="fc" id="L433">        var semverVersions = new TreeSet&lt;&gt;();</span>
 
         // add current version
-<span class="fc" id="L366">        var currentSemverVersion = new Semver(version);</span>
-<span class="fc" id="L367">        semverVersions.add(currentSemverVersion);</span>
+<span class="fc" id="L436">        var currentSemverVersion = new Semver(version);</span>
+<span class="fc" id="L437">        semverVersions.add(currentSemverVersion);</span>
 
         // add all other versions sharing the same major/minor version
-<span class="fc bfc" id="L370" title="All 2 branches covered.">        for (String taggedVersion : taggedVersions) {</span>
-<span class="fc" id="L371">            var semverTaggedVersion = new Semver(taggedVersion);</span>
-<span class="fc bfc" id="L372" title="All 6 branches covered.">            if (semverTaggedVersion.getMajor().equals(currentSemverVersion.getMajor()) &amp;&amp; semverTaggedVersion.getMinor().equals(currentSemverVersion.getMinor()) &amp;&amp; semverTaggedVersion.getPatch().equals(currentSemverVersion.getPatch())) {</span>
-<span class="fc" id="L373">                semverVersions.add(semverTaggedVersion);</span>
+<span class="fc bfc" id="L440" title="All 2 branches covered.">        for (String taggedVersion : taggedVersions) {</span>
+<span class="fc" id="L441">            var semverTaggedVersion = new Semver(taggedVersion);</span>
+<span class="fc bfc" id="L442" title="All 2 branches covered.">            if (semverTaggedVersion.getMajor().equals(currentSemverVersion.getMajor())</span>
+<span class="fc bfc" id="L443" title="All 2 branches covered.">                    &amp;&amp; semverTaggedVersion.getMinor().equals(currentSemverVersion.getMinor())</span>
+<span class="fc bfc" id="L444" title="All 2 branches covered.">                    &amp;&amp; semverTaggedVersion.getPatch().equals(currentSemverVersion.getPatch())) {</span>
+<span class="fc" id="L445">                semverVersions.add(semverTaggedVersion);</span>
             }
-<span class="fc" id="L375">        }</span>
+<span class="fc" id="L447">        }</span>
 
         // last item is the latest one.
-<span class="fc" id="L378">        return semverVersions.last().equals(currentSemverVersion);</span>
+<span class="fc" id="L450">        return semverVersions.last().equals(currentSemverVersion);</span>
     }
 
     /**
@@ -383,8 +455,8 @@ import me.julb.sdk.github.actions.spi.GitHubActionProvider;
      * @param version the version.
      * @return the git tag for the given version.
      */
-<span class="fc bfc" id="L386" title="All 2 branches covered.">    String gitTag(@NonNull String version) {</span>
-<span class="fc" id="L387">        return String.format(&quot;v%s&quot;, version);</span>
+<span class="fc bfc" id="L458" title="All 2 branches covered.">    String gitTag(@NonNull String version) {</span>
+<span class="fc" id="L459">        return String.format(&quot;v%s&quot;, version);</span>
     }
 
     /**
@@ -392,8 +464,8 @@ import me.julb.sdk.github.actions.spi.GitHubActionProvider;
      * @param branchName the branch name.
      * @return the ref for the given branch name.
      */
-<span class="fc bfc" id="L395" title="All 2 branches covered.">    String branchRef(@NonNull String branchName) {</span>
-<span class="fc" id="L396">        return String.format(&quot;refs/heads/%s&quot;, branchName);</span>
+<span class="fc bfc" id="L467" title="All 2 branches covered.">    String branchRef(@NonNull String branchName) {</span>
+<span class="fc" id="L468">        return String.format(&quot;refs/heads/%s&quot;, branchName);</span>
     }
 }
-</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.7.202105040129</span></div></body></html>
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.8.202204050719</span></div></body></html>
