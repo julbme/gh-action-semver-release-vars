@@ -217,7 +217,7 @@
 									<target>
 										<replaceregexp file="Dockerfile" match="ARG SCM_URL.*" replace="ARG SCM_URL=${project.scm.url}" />
 										<replaceregexp file="Dockerfile" match="ARG ARTIFACT_ID.*" replace="ARG ARTIFACT_ID=${project.artifactId}" />
-										<replaceregexp file="Dockerfile" match="ARG VERSION.*" replace="ARG VERSION=${nextPatchVersion}" />
+										<replaceregexp file="Dockerfile" match="ARG VERSION.*" replace="ARG VERSION=${j3.var.nextPatchVersion}" />
 									</target>
 								</configuration>
 							</execution>
@@ -249,7 +249,7 @@
 									<target>
 										<replaceregexp file="Dockerfile" match="ARG SCM_URL.*" replace="ARG SCM_URL=${project.scm.url}" />
 										<replaceregexp file="Dockerfile" match="ARG ARTIFACT_ID.*" replace="ARG ARTIFACT_ID=${project.artifactId}" />
-										<replaceregexp file="Dockerfile" match="ARG VERSION.*" replace="ARG VERSION=${nextMinorVersion}" />
+										<replaceregexp file="Dockerfile" match="ARG VERSION.*" replace="ARG VERSION=${j3.var.nextMinorVersion}" />
 									</target>
 								</configuration>
 							</execution>
@@ -281,7 +281,7 @@
 									<target>
 										<replaceregexp file="Dockerfile" match="ARG SCM_URL.*" replace="ARG SCM_URL=${project.scm.url}" />
 										<replaceregexp file="Dockerfile" match="ARG ARTIFACT_ID.*" replace="ARG ARTIFACT_ID=${project.artifactId}" />
-										<replaceregexp file="Dockerfile" match="ARG VERSION.*" replace="ARG VERSION=${nextMajorVersion}" />
+										<replaceregexp file="Dockerfile" match="ARG VERSION.*" replace="ARG VERSION=${j3.var.nextMajorVersion}" />
 									</target>
 								</configuration>
 							</execution>
@@ -313,7 +313,7 @@
 									<target>
 										<replaceregexp file="Dockerfile" match="ARG SCM_URL.*" replace="ARG SCM_URL=${project.scm.url}" />
 										<replaceregexp file="Dockerfile" match="ARG ARTIFACT_ID.*" replace="ARG ARTIFACT_ID=${project.artifactId}" />
-										<replaceregexp file="Dockerfile" match="ARG VERSION.*" replace="ARG VERSION=${releaseVersion}" />
+										<replaceregexp file="Dockerfile" match="ARG VERSION.*" replace="ARG VERSION=${j3.var.releaseVersion}" />
 									</target>
 								</configuration>
 							</execution>
