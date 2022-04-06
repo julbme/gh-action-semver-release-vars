@@ -1,6 +1,6 @@
 name: Execute action
 
-on: 
+on:
   workflow_dispatch:
     inputs:
       name:
@@ -14,7 +14,6 @@ on:
         description: "The source from which to create the branch."
         required: false
 
-
 jobs:
   merge-branch:
     runs-on: ubuntu-latest
@@ -24,9 +23,9 @@ jobs:
         id: manage_branch
         uses: ./
         with:
-          name:  ${{ github.event.inputs.name }}
-          state:  ${{ github.event.inputs.state }}
-          from:  ${{ github.event.inputs.from }}
+          name: ${{ github.event.inputs.name }}
+          state: ${{ github.event.inputs.state }}
+          from: ${{ github.event.inputs.from }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Check outputs

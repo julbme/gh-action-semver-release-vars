@@ -1,3 +1,4 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
 	<modelVersion>4.0.0</modelVersion>
@@ -14,12 +15,7 @@
 	<name>Julb.me :: GitHub action semver release vars</name>
 	<description>This GitHub action enables to compute vars when performing a release.</description>
 
-	<properties>
-		<maven.compiler.source>17</maven.compiler.source>
-		<maven.compiler.target>17</maven.compiler.target>
-
-		<sonar.projectKey>julbme_gh-action-semver-release-vars</sonar.projectKey>
-	</properties>
+	<url>https://julbme.github.io/gh-action-semver-release-vars/</url>
 
 	<licenses>
 		<license>
@@ -29,18 +25,16 @@
 		</license>
 	</licenses>
 
-	<url>https://julbme.github.io/gh-action-semver-release-vars/</url>
-
-	<issueManagement>
-		<url>https://github.com/julbme/gh-action-semver-release-vars/issues</url>
-		<system>GitHub Issues</system>
-	</issueManagement>
-
 	<scm>
-		<url>https://github.com/julbme/gh-action-semver-release-vars</url>
 		<connection>scm:git:git://github.com/julbme/gh-action-semver-release-vars.git</connection>
 		<developerConnection>scm:git:git@github.com:julbme/gh-action-semver-release-vars.git</developerConnection>
+		<url>https://github.com/julbme/gh-action-semver-release-vars</url>
 	</scm>
+
+	<issueManagement>
+		<system>GitHub Issues</system>
+		<url>https://github.com/julbme/gh-action-semver-release-vars/issues</url>
+	</issueManagement>
 
 	<distributionManagement>
 		<site>
@@ -50,13 +44,14 @@
 		</site>
 	</distributionManagement>
 
+	<properties>
+		<maven.compiler.source>17</maven.compiler.source>
+		<maven.compiler.target>17</maven.compiler.target>
+
+		<sonar.projectKey>julbme_gh-action-semver-release-vars</sonar.projectKey>
+	</properties>
+
 	<dependencies>
-		<!-- compile -->
-		<dependency>
-			<groupId>me.julb</groupId>
-			<artifactId>sdk-github-actions</artifactId>
-			<version>[1,2)</version>
-		</dependency>
 		<dependency>
 			<groupId>org.apache.commons</groupId>
 			<artifactId>commons-lang3</artifactId>
@@ -64,6 +59,12 @@
 		<dependency>
 			<groupId>org.kohsuke</groupId>
 			<artifactId>github-api</artifactId>
+		</dependency>
+		<!-- compile -->
+		<dependency>
+			<groupId>me.julb</groupId>
+			<artifactId>sdk-github-actions</artifactId>
+			<version>[1,2)</version>
 		</dependency>
 		<dependency>
 			<groupId>com.vdurmont</groupId>
@@ -95,44 +96,18 @@
 		</dependency>
 		<dependency>
 			<groupId>org.mockito</groupId>
-			<artifactId>mockito-junit-jupiter</artifactId>
+			<artifactId>mockito-inline</artifactId>
 			<scope>test</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.mockito</groupId>
-			<artifactId>mockito-inline</artifactId>
+			<artifactId>mockito-junit-jupiter</artifactId>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
 
 	<build>
 		<plugins>
-			<plugin>
-				<groupId>org.jacoco</groupId>
-				<artifactId>jacoco-maven-plugin</artifactId>
-				<executions>
-					<execution>
-						<id>prepare-agent</id>
-						<goals>
-							<goal>prepare-agent</goal>
-						</goals>
-					</execution>
-					<execution>
-						<id>report</id>
-						<phase>verify</phase>
-						<goals>
-							<goal>report</goal>
-						</goals>
-					</execution>
-				</executions>
-			</plugin>
-			<plugin>
-				<groupId>org.jreleaser</groupId>
-				<artifactId>jreleaser-maven-plugin</artifactId>
-				<configuration>
-					<configFile>jreleaser.yml</configFile>
-				</configuration>
-			</plugin>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-jar-plugin</artifactId>
@@ -161,10 +136,10 @@
 				<artifactId>maven-shade-plugin</artifactId>
 				<executions>
 					<execution>
-						<phase>package</phase>
 						<goals>
 							<goal>shade</goal>
 						</goals>
+						<phase>package</phase>
 						<configuration>
 							<shadedArtifactAttached>true</shadedArtifactAttached>
 							<transformers>
@@ -189,9 +164,34 @@
 					</execution>
 				</executions>
 			</plugin>
+			<plugin>
+				<groupId>org.jacoco</groupId>
+				<artifactId>jacoco-maven-plugin</artifactId>
+				<executions>
+					<execution>
+						<id>prepare-agent</id>
+						<goals>
+							<goal>prepare-agent</goal>
+						</goals>
+					</execution>
+					<execution>
+						<id>report</id>
+						<goals>
+							<goal>report</goal>
+						</goals>
+						<phase>verify</phase>
+					</execution>
+				</executions>
+			</plugin>
+			<plugin>
+				<groupId>org.jreleaser</groupId>
+				<artifactId>jreleaser-maven-plugin</artifactId>
+				<configuration>
+					<configFile>jreleaser.yml</configFile>
+				</configuration>
+			</plugin>
 		</plugins>
 	</build>
-
 
 	<profiles>
 		<profile>
@@ -209,10 +209,10 @@
 						<executions>
 							<execution>
 								<id>update-docker-file</id>
-								<phase>validate</phase>
 								<goals>
 									<goal>run</goal>
 								</goals>
+								<phase>validate</phase>
 								<configuration>
 									<target>
 										<replaceregexp file="Dockerfile" match="ARG SCM_URL.*" replace="ARG SCM_URL=${project.scm.url}" />
@@ -241,10 +241,10 @@
 						<executions>
 							<execution>
 								<id>update-docker-file</id>
-								<phase>validate</phase>
 								<goals>
 									<goal>run</goal>
 								</goals>
+								<phase>validate</phase>
 								<configuration>
 									<target>
 										<replaceregexp file="Dockerfile" match="ARG SCM_URL.*" replace="ARG SCM_URL=${project.scm.url}" />
@@ -273,10 +273,10 @@
 						<executions>
 							<execution>
 								<id>update-docker-file</id>
-								<phase>validate</phase>
 								<goals>
 									<goal>run</goal>
 								</goals>
+								<phase>validate</phase>
 								<configuration>
 									<target>
 										<replaceregexp file="Dockerfile" match="ARG SCM_URL.*" replace="ARG SCM_URL=${project.scm.url}" />
@@ -305,10 +305,10 @@
 						<executions>
 							<execution>
 								<id>update-docker-file</id>
-								<phase>validate</phase>
 								<goals>
 									<goal>run</goal>
 								</goals>
+								<phase>validate</phase>
 								<configuration>
 									<target>
 										<replaceregexp file="Dockerfile" match="ARG SCM_URL.*" replace="ARG SCM_URL=${project.scm.url}" />
@@ -337,10 +337,10 @@
 						<executions>
 							<execution>
 								<id>update-docker-file</id>
-								<phase>validate</phase>
 								<goals>
 									<goal>run</goal>
 								</goals>
+								<phase>validate</phase>
 								<configuration>
 									<target>
 										<replaceregexp file="Dockerfile" match="ARG SCM_URL.*" replace="ARG SCM_URL=${project.scm.url}" />
@@ -355,4 +355,4 @@
 			</build>
 		</profile>
 	</profiles>
-</project> 
+</project>

@@ -21,11 +21,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 package me.julb.applications.github.actions;
-
-import com.vdurmont.semver4j.Semver;
-import com.vdurmont.semver4j.SemverException;
 
 import java.io.IOException;
 import java.util.Collection;
@@ -36,18 +32,21 @@ import java.util.TreeSet;
 import java.util.concurrent.CompletionException;
 import java.util.regex.Pattern;
 
-import lombok.AccessLevel;
-import lombok.NonNull;
-import lombok.Setter;
-
 import org.apache.commons.lang3.StringUtils;
 import org.kohsuke.github.GHRepository;
 import org.kohsuke.github.GHTag;
 import org.kohsuke.github.GitHub;
 import org.kohsuke.github.GitHubBuilder;
 
+import com.vdurmont.semver4j.Semver;
+import com.vdurmont.semver4j.SemverException;
+
 import me.julb.sdk.github.actions.kit.GitHubActionsKit;
 import me.julb.sdk.github.actions.spi.GitHubActionProvider;
+
+import lombok.AccessLevel;
+import lombok.NonNull;
+import lombok.Setter;
 
 /**
  * The action to compute SemVer release vars. <br>
@@ -63,12 +62,14 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
     /**
      * The pattern to match for trigger release branch.
      */
-    private static final Pattern TRIGGER_RELEASE_BRANCH_PATTERN = Pattern.compile("^releases/trigger(-v?(?<version>[0-9]+[.][0-9]+[.][0-9]+[\\w.+\\-]*))?$");
+    private static final Pattern TRIGGER_RELEASE_BRANCH_PATTERN =
+            Pattern.compile("^releases/trigger(-v?(?<version>[0-9]+[.][0-9]+[.][0-9]+[\\w.+\\-]*))?$");
 
     /**
      * The pattern to match for maintenance branch.
      */
-    private static final Pattern MAINTENANCE_BRANCH_PATTERN = Pattern.compile("^maintenances/(?<major>[0-9]+)[.]((?<minor>[0-9]+)[.])?x$");
+    private static final Pattern MAINTENANCE_BRANCH_PATTERN =
+            Pattern.compile("^maintenances/(?<major>[0-9]+)[.]((?<minor>[0-9]+)[.])?x$");
 
     /**
      * The GitHub action kit.
@@ -117,26 +118,37 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
 
             // Ensure a tag with this version does not exist.
             if (tagsByVersion.containsKey(releaseVersion.toLowerCase())) {
-                throw new IllegalArgumentException(String.format("a tag for version %s already exists in the repository.", releaseVersion));
+                throw new IllegalArgumentException(
+                        String.format("a tag for version %s already exists in the repository.", releaseVersion));
             }
 
             // verify if this releases are the latest version
             boolean isLatestMajorVersion = isLatestMajorVersion(releaseVersion, tagsByVersion.keySet());
             boolean isLatestMajorMinorVersion = isLatestMajorMinorVersion(releaseVersion, tagsByVersion.keySet());
-            boolean isLatestMajorMinorPatchVersion = isLatestMajorMinorPatchVersion(releaseVersion, tagsByVersion.keySet());
+            boolean isLatestMajorMinorPatchVersion =
+                    isLatestMajorMinorPatchVersion(releaseVersion, tagsByVersion.keySet());
 
             // Parse version
             var valueVersion = semverReleaseVersion.getValue();
             var majorVersion = String.valueOf(semverReleaseVersion.getMajor());
-            var majorAndMinorVersion = StringUtils.join(semverReleaseVersion.getMajor(), ".", semverReleaseVersion.getMinor());
-            var majorAndMinorAndPatchVersion = StringUtils.join(semverReleaseVersion.getMajor(), ".", semverReleaseVersion.getMinor(), ".", semverReleaseVersion.getPatch());
+            var majorAndMinorVersion =
+                    StringUtils.join(semverReleaseVersion.getMajor(), ".", semverReleaseVersion.getMinor());
+            var majorAndMinorAndPatchVersion = StringUtils.join(
+                    semverReleaseVersion.getMajor(),
+                    ".",
+                    semverReleaseVersion.getMinor(),
+                    ".",
+                    semverReleaseVersion.getPatch());
             var minorVersion = String.valueOf(semverReleaseVersion.getMinor());
             var patchVersion = String.valueOf(semverReleaseVersion.getPatch());
-            var suffixVersion = semverReleaseVersion.getSuffixTokens().length > 0 ? StringUtils.join(semverReleaseVersion.getSuffixTokens(), ".") : null;
+            var suffixVersion = semverReleaseVersion.getSuffixTokens().length > 0
+                    ? StringUtils.join(semverReleaseVersion.getSuffixTokens(), ".")
+                    : null;
             var buildVersion = semverReleaseVersion.getBuild();
 
             // Get target branch
-            String targetBranch = getMaintenanceBranchName(releaseVersion).orElse(Optional.ofNullable(ghRepository.getDefaultBranch()).orElseThrow());
+            String targetBranch = getMaintenanceBranchName(releaseVersion)
+                    .orElse(Optional.ofNullable(ghRepository.getDefaultBranch()).orElseThrow());
 
             // Set output variables.
             // -- release version
@@ -148,22 +160,58 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
             this.ghActionsKit.setOptionalOutput(OutputVars.VERSION_BUILD.key(), Optional.ofNullable(buildVersion));
 
             this.ghActionsKit.setOutput(OutputVars.GIT_TAG.key(), gitTag(valueVersion));
-            this.ghActionsKit.setOptionalOutput(OutputVars.GIT_TAG_MAJOR.key(), Optional.of(isLatestMajorVersion).filter(Boolean.TRUE::equals).map(v -> gitTag(majorVersion)));
-            this.ghActionsKit.setOptionalOutput(OutputVars.GIT_TAG_MINOR.key(), Optional.of(isLatestMajorMinorVersion).filter(Boolean.TRUE::equals).map(v -> gitTag(majorAndMinorVersion)));
-            this.ghActionsKit.setOptionalOutput(OutputVars.GIT_TAG_PATCH.key(), Optional.of(isLatestMajorMinorPatchVersion).filter(Boolean.TRUE::equals).map(v -> gitTag(majorAndMinorAndPatchVersion)));
+            this.ghActionsKit.setOptionalOutput(
+                    OutputVars.GIT_TAG_MAJOR.key(),
+                    Optional.of(isLatestMajorVersion)
+                            .filter(Boolean.TRUE::equals)
+                            .map(v -> gitTag(majorVersion)));
+            this.ghActionsKit.setOptionalOutput(
+                    OutputVars.GIT_TAG_MINOR.key(),
+                    Optional.of(isLatestMajorMinorVersion)
+                            .filter(Boolean.TRUE::equals)
+                            .map(v -> gitTag(majorAndMinorVersion)));
+            this.ghActionsKit.setOptionalOutput(
+                    OutputVars.GIT_TAG_PATCH.key(),
+                    Optional.of(isLatestMajorMinorPatchVersion)
+                            .filter(Boolean.TRUE::equals)
+                            .map(v -> gitTag(majorAndMinorAndPatchVersion)));
 
             this.ghActionsKit.setOutput(OutputVars.DOCKER_TAG.key(), valueVersion);
-            this.ghActionsKit.setOptionalOutput(OutputVars.DOCKER_TAG_MAJOR.key(), Optional.of(isLatestMajorVersion).filter(Boolean.TRUE::equals).map(v -> majorVersion));
-            this.ghActionsKit.setOptionalOutput(OutputVars.DOCKER_TAG_MINOR.key(), Optional.of(isLatestMajorMinorVersion).filter(Boolean.TRUE::equals).map(v -> majorAndMinorVersion));
-            this.ghActionsKit.setOptionalOutput(OutputVars.DOCKER_TAG_PATCH.key(), Optional.of(isLatestMajorMinorPatchVersion).filter(Boolean.TRUE::equals).map(v -> majorAndMinorAndPatchVersion));
+            this.ghActionsKit.setOptionalOutput(
+                    OutputVars.DOCKER_TAG_MAJOR.key(),
+                    Optional.of(isLatestMajorVersion)
+                            .filter(Boolean.TRUE::equals)
+                            .map(v -> majorVersion));
+            this.ghActionsKit.setOptionalOutput(
+                    OutputVars.DOCKER_TAG_MINOR.key(),
+                    Optional.of(isLatestMajorMinorVersion)
+                            .filter(Boolean.TRUE::equals)
+                            .map(v -> majorAndMinorVersion));
+            this.ghActionsKit.setOptionalOutput(
+                    OutputVars.DOCKER_TAG_PATCH.key(),
+                    Optional.of(isLatestMajorMinorPatchVersion)
+                            .filter(Boolean.TRUE::equals)
+                            .map(v -> majorAndMinorAndPatchVersion));
 
             // -- next version
-            this.ghActionsKit.setOutput(OutputVars.NEXT_MAJOR_VERSION.key(), semverReleaseVersion.nextMajor().getValue());
-            this.ghActionsKit.setOutput(OutputVars.NEXT_MINOR_VERSION.key(), semverReleaseVersion.nextMinor().getValue());
-            this.ghActionsKit.setOutput(OutputVars.NEXT_PATCH_VERSION.key(), semverReleaseVersion.nextPatch().getValue());
-            this.ghActionsKit.setOutput(OutputVars.NEXT_MAJOR_SNAPSHOT_VERSION.key(), semverReleaseVersion.nextMajor().withSuffix(SNAPSHOT_SUFFIX).getValue());
-            this.ghActionsKit.setOutput(OutputVars.NEXT_MINOR_SNAPSHOT_VERSION.key(), semverReleaseVersion.nextMinor().withSuffix(SNAPSHOT_SUFFIX).getValue());
-            this.ghActionsKit.setOutput(OutputVars.NEXT_PATCH_SNAPSHOT_VERSION.key(), semverReleaseVersion.nextPatch().withSuffix(SNAPSHOT_SUFFIX).getValue());
+            this.ghActionsKit.setOutput(
+                    OutputVars.NEXT_MAJOR_VERSION.key(),
+                    semverReleaseVersion.nextMajor().getValue());
+            this.ghActionsKit.setOutput(
+                    OutputVars.NEXT_MINOR_VERSION.key(),
+                    semverReleaseVersion.nextMinor().getValue());
+            this.ghActionsKit.setOutput(
+                    OutputVars.NEXT_PATCH_VERSION.key(),
+                    semverReleaseVersion.nextPatch().getValue());
+            this.ghActionsKit.setOutput(
+                    OutputVars.NEXT_MAJOR_SNAPSHOT_VERSION.key(),
+                    semverReleaseVersion.nextMajor().withSuffix(SNAPSHOT_SUFFIX).getValue());
+            this.ghActionsKit.setOutput(
+                    OutputVars.NEXT_MINOR_SNAPSHOT_VERSION.key(),
+                    semverReleaseVersion.nextMinor().withSuffix(SNAPSHOT_SUFFIX).getValue());
+            this.ghActionsKit.setOutput(
+                    OutputVars.NEXT_PATCH_SNAPSHOT_VERSION.key(),
+                    semverReleaseVersion.nextPatch().withSuffix(SNAPSHOT_SUFFIX).getValue());
 
             // -- branch
             this.ghActionsKit.setOutput(OutputVars.TRIGGER_BRANCH.key(), releaseBranchName);
@@ -240,21 +288,21 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
      * Connects to GitHub API.
      * @throws IOException if an error occurs.
      */
-    void connectApi()
-        throws IOException {
+    void connectApi() throws IOException {
         ghActionsKit.debug("github api url connection: check.");
 
         // Get token
         var githubToken = ghActionsKit.getRequiredEnv("GITHUB_TOKEN");
 
-        //@formatter:off
-        ghApi = Optional.ofNullable(ghApi).orElse(new GitHubBuilder()
-            .withEndpoint(ghActionsKit.getGitHubApiUrl())
-            .withOAuthToken(githubToken)
-            .build());
+        // @formatter:off
+        ghApi = Optional.ofNullable(ghApi)
+                .orElse(new GitHubBuilder()
+                        .withEndpoint(ghActionsKit.getGitHubApiUrl())
+                        .withOAuthToken(githubToken)
+                        .build());
         ghApi.checkApiUrlValidity();
         ghActionsKit.debug("github api url connection: ok.");
-        //@formatter:on
+        // @formatter:on
     }
 
     /**
@@ -263,8 +311,7 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
      * @return the maintenance branch name matching this release version, or {@link Optional#empty()} otherwise.
      * @throws IOException if an error occurs.
      */
-    Optional<String> getMaintenanceBranchName(@NonNull String releaseVersion)
-        throws IOException {
+    Optional<String> getMaintenanceBranchName(@NonNull String releaseVersion) throws IOException {
         // Get semver version
         var currentSemverVersion = new Semver(releaseVersion);
 
@@ -273,13 +320,14 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
         for (String branch : branches) {
             var matcher = MAINTENANCE_BRANCH_PATTERN.matcher(branch);
 
-            //@formatter:off
+            // @formatter:off
             if (matcher.matches()
-                && Integer.valueOf(matcher.group("major")).equals(currentSemverVersion.getMajor()) 
-                && (matcher.group("minor") == null || Integer.valueOf(matcher.group("minor")).equals(currentSemverVersion.getMinor()))) {
+                    && Integer.valueOf(matcher.group("major")).equals(currentSemverVersion.getMajor())
+                    && (matcher.group("minor") == null
+                            || Integer.valueOf(matcher.group("minor")).equals(currentSemverVersion.getMinor()))) {
                 return Optional.of(branch);
             }
-            //@formatter:on
+            // @formatter:on
         }
 
         return Optional.empty();
@@ -290,8 +338,7 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
      * @return the tags of the given repository.
      * @throws IOException if an error occurs.
      */
-    Map<String, GHTag> getTags()
-        throws IOException {
+    Map<String, GHTag> getTags() throws IOException {
         var tags = new HashMap<String, GHTag>();
         for (GHTag ghTag : ghRepository.listTags()) {
             var tagName = ghTag.getName().toLowerCase().replaceFirst("^v", "");
@@ -343,7 +390,8 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
         // add all other versions sharing the same major/minor version
         for (String taggedVersion : taggedVersions) {
             var semverTaggedVersion = new Semver(taggedVersion);
-            if (semverTaggedVersion.getMajor().equals(currentSemverVersion.getMajor()) && semverTaggedVersion.getMinor().equals(currentSemverVersion.getMinor())) {
+            if (semverTaggedVersion.getMajor().equals(currentSemverVersion.getMajor())
+                    && semverTaggedVersion.getMinor().equals(currentSemverVersion.getMinor())) {
                 semverVersions.add(semverTaggedVersion);
             }
         }
@@ -369,7 +417,9 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
         // add all other versions sharing the same major/minor version
         for (String taggedVersion : taggedVersions) {
             var semverTaggedVersion = new Semver(taggedVersion);
-            if (semverTaggedVersion.getMajor().equals(currentSemverVersion.getMajor()) && semverTaggedVersion.getMinor().equals(currentSemverVersion.getMinor()) && semverTaggedVersion.getPatch().equals(currentSemverVersion.getPatch())) {
+            if (semverTaggedVersion.getMajor().equals(currentSemverVersion.getMajor())
+                    && semverTaggedVersion.getMinor().equals(currentSemverVersion.getMinor())
+                    && semverTaggedVersion.getPatch().equals(currentSemverVersion.getPatch())) {
                 semverVersions.add(semverTaggedVersion);
             }
         }

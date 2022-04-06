@@ -21,7 +21,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-
 package me.julb.applications.github.actions;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -92,8 +91,7 @@ class SemverReleaseVarsGitHubActionTest {
      * @throws java.lang.Exception
      */
     @BeforeEach
-    void setUp()
-        throws Exception {
+    void setUp() throws Exception {
         githubAction = new SemverReleaseVarsGitHubAction();
         githubAction.setGhActionsKit(ghActionsKitMock);
         githubAction.setGhApi(ghApiMock);
@@ -104,8 +102,7 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenGetInputPackageVersion_thenReturnValue()
-        throws Exception {
+    void whenGetInputPackageVersion_thenReturnValue() throws Exception {
         when(this.ghActionsKitMock.getInput("package_version")).thenReturn(Optional.of("1.0.0"));
 
         assertThat(this.githubAction.getInputPackageVersion()).isPresent().contains("1.0.0");
@@ -117,8 +114,7 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenGetInputPackageVersionWithPrefix_thenReturnValue()
-        throws Exception {
+    void whenGetInputPackageVersionWithPrefix_thenReturnValue() throws Exception {
         when(this.ghActionsKitMock.getInput("package_version")).thenReturn(Optional.of("v1.0.0"));
 
         assertThat(this.githubAction.getInputPackageVersion()).isPresent().contains("1.0.0");
@@ -142,8 +138,7 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenGetReleaseBranchNameIsBranch_thenReturnValue()
-        throws Exception {
+    void whenGetReleaseBranchNameIsBranch_thenReturnValue() throws Exception {
         when(this.ghActionsKitMock.isGitHubRefTypeBranch()).thenReturn(true);
         when(this.ghActionsKitMock.getGitHubRefName()).thenReturn("branch-name");
 
@@ -157,8 +152,7 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenGetReleaseBranchNameIsTag_thenThrowIllegalArgumentException()
-        throws Exception {
+    void whenGetReleaseBranchNameIsTag_thenThrowIllegalArgumentException() throws Exception {
         when(this.ghActionsKitMock.isGitHubRefTypeBranch()).thenReturn(false);
 
         assertThrows(IllegalArgumentException.class, () -> this.githubAction.getReleaseBranchName());
@@ -170,8 +164,7 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenGetRunReleaseBranchName_thenReturnValue()
-        throws Exception {
+    void whenGetRunReleaseBranchName_thenReturnValue() throws Exception {
         when(this.ghActionsKitMock.getGitHubRunId()).thenReturn("123456");
 
         assertThat(this.githubAction.getRunReleaseBranchName()).isEqualTo("releases/run-123456");
@@ -183,20 +176,22 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenGetReleaseVersionBranchNameWithoutVersion_thenReturnProvidedVersion()
-        throws Exception {
-        assertThat(this.githubAction.getReleaseVersion(Optional.of("1.0.0"), "releases/trigger")).isEqualTo("1.0.0");
+    void whenGetReleaseVersionBranchNameWithoutVersion_thenReturnProvidedVersion() throws Exception {
+        assertThat(this.githubAction.getReleaseVersion(Optional.of("1.0.0"), "releases/trigger"))
+                .isEqualTo("1.0.0");
     }
 
     /**
      * Test method.
      */
     @Test
-    void whenGetReleaseVersionBranchNameWithVersion_thenReturnBranchVersion()
-        throws Exception {
-        assertThat(this.githubAction.getReleaseVersion(Optional.of("1.0.0"), "releases/trigger-1.2.3")).isEqualTo("1.2.3");
-        assertThat(this.githubAction.getReleaseVersion(Optional.of("1.0.0"), "releases/trigger-v1.2.3")).isEqualTo("1.2.3");
-        assertThat(this.githubAction.getReleaseVersion(Optional.of("1.0.0"), "releases/trigger-1.0.3-rc1+abcde1234")).isEqualTo("1.0.3-rc1+abcde1234");
+    void whenGetReleaseVersionBranchNameWithVersion_thenReturnBranchVersion() throws Exception {
+        assertThat(this.githubAction.getReleaseVersion(Optional.of("1.0.0"), "releases/trigger-1.2.3"))
+                .isEqualTo("1.2.3");
+        assertThat(this.githubAction.getReleaseVersion(Optional.of("1.0.0"), "releases/trigger-v1.2.3"))
+                .isEqualTo("1.2.3");
+        assertThat(this.githubAction.getReleaseVersion(Optional.of("1.0.0"), "releases/trigger-1.0.3-rc1+abcde1234"))
+                .isEqualTo("1.0.3-rc1+abcde1234");
     }
 
     /**
@@ -204,28 +199,28 @@ class SemverReleaseVarsGitHubActionTest {
      */
     @Test
     void whenGetReleaseVersionBranchNameWithoutVersionAndNoProvidedVersion_thenThrowNoSuchElementException()
-        throws Exception {
-        var emptyOpt = Optional.<String> empty();
-        assertThrows(NoSuchElementException.class, () -> this.githubAction.getReleaseVersion(emptyOpt, "releases/trigger"));
+            throws Exception {
+        var emptyOpt = Optional.<String>empty();
+        assertThrows(
+                NoSuchElementException.class, () -> this.githubAction.getReleaseVersion(emptyOpt, "releases/trigger"));
     }
 
     /**
      * Test method.
      */
     @Test
-    void whenGetReleaseVersionBranchNameIsInvalid_thenThrowIllegalArgumentException()
-        throws Exception {
-        var emptyOpt = Optional.<String> empty();
-        assertThrows(IllegalArgumentException.class, () -> this.githubAction.getReleaseVersion(emptyOpt, "branch-name"));
+    void whenGetReleaseVersionBranchNameIsInvalid_thenThrowIllegalArgumentException() throws Exception {
+        var emptyOpt = Optional.<String>empty();
+        assertThrows(
+                IllegalArgumentException.class, () -> this.githubAction.getReleaseVersion(emptyOpt, "branch-name"));
     }
 
     /**
      * Test method.
      */
     @Test
-    void whenGetReleaseVersionNull_thenThrowNullPointerException()
-        throws Exception {
-        var emptyOpt = Optional.<String> empty();
+    void whenGetReleaseVersionNull_thenThrowNullPointerException() throws Exception {
+        var emptyOpt = Optional.<String>empty();
         assertThrows(NullPointerException.class, () -> this.githubAction.getReleaseVersion(null, "branch-name"));
         assertThrows(NullPointerException.class, () -> this.githubAction.getReleaseVersion(emptyOpt, null));
     }
@@ -234,8 +229,7 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenGetSemverVersion_thenReturnValidVersion()
-        throws Exception {
+    void whenGetSemverVersion_thenReturnValidVersion() throws Exception {
         var semver = this.githubAction.getSemverVersion("1.0.3-rc1+abcde1234");
         assertThat(semver.getMajor()).isEqualTo(1);
         assertThat(semver.getMinor()).isZero();
@@ -248,8 +242,7 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenGetSemverVersionInvalid_thenThrowIllegalArgumentException()
-        throws Exception {
+    void whenGetSemverVersionInvalid_thenThrowIllegalArgumentException() throws Exception {
         assertThrows(IllegalArgumentException.class, () -> this.githubAction.getSemverVersion("abcd"));
     }
 
@@ -257,8 +250,7 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenGetSemverVersionNull_thenThrowNullPointerException()
-        throws Exception {
+    void whenGetSemverVersionNull_thenThrowNullPointerException() throws Exception {
         assertThrows(NullPointerException.class, () -> this.githubAction.getSemverVersion(null));
     }
 
@@ -267,8 +259,7 @@ class SemverReleaseVarsGitHubActionTest {
      */
     @Test
     @SuppressWarnings("java:S5961")
-    void whenExecuteWithoutMaintenanceBranchAndLatest_thenReturnValidValues()
-        throws Exception {
+    void whenExecuteWithoutMaintenanceBranchAndLatest_thenReturnValidValues() throws Exception {
         var spy = spy(this.githubAction);
 
         var ghTag = Mockito.mock(GHTag.class);
@@ -344,8 +335,7 @@ class SemverReleaseVarsGitHubActionTest {
      */
     @Test
     @SuppressWarnings("java:S5961")
-    void whenExecuteWithoutMaintenanceBranchAndNotLatest_thenReturnValidValues()
-        throws Exception {
+    void whenExecuteWithoutMaintenanceBranchAndNotLatest_thenReturnValidValues() throws Exception {
         var spy = spy(this.githubAction);
 
         var ghTag = Mockito.mock(GHTag.class);
@@ -421,8 +411,7 @@ class SemverReleaseVarsGitHubActionTest {
      */
     @Test
     @SuppressWarnings("java:S5961")
-    void whenExecuteWithMaintenanceBranchAndLatest_thenReturnValidValues()
-        throws Exception {
+    void whenExecuteWithMaintenanceBranchAndLatest_thenReturnValidValues() throws Exception {
         var spy = spy(this.githubAction);
 
         var ghTag = Mockito.mock(GHTag.class);
@@ -497,8 +486,7 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenExecuteTagWithVersionAlreadyExist_thenThrowIllegalArgumentException()
-        throws Exception {
+    void whenExecuteTagWithVersionAlreadyExist_thenThrowIllegalArgumentException() throws Exception {
         var spy = spy(this.githubAction);
 
         var ghTag = Mockito.mock(GHTag.class);
@@ -528,8 +516,7 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenConnectApi_thenVerifyOK()
-        throws Exception {
+    void whenConnectApi_thenVerifyOK() throws Exception {
         when(ghActionsKitMock.getRequiredEnv("GITHUB_TOKEN")).thenReturn("token");
         when(ghActionsKitMock.getGitHubApiUrl()).thenReturn("https://api.github.com");
 
@@ -545,20 +532,20 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenIsLatestMajorVersion_thenReturnValidValue()
-        throws Exception {
+    void whenIsLatestMajorVersion_thenReturnValidValue() throws Exception {
         assertThat(this.githubAction.isLatestMajorVersion("1.3.0", List.of())).isTrue();
-        assertThat(this.githubAction.isLatestMajorVersion("1.3.0", List.of("1.0.0", "1.2.0", "2.0.0"))).isTrue();
-        assertThat(this.githubAction.isLatestMajorVersion("1.3.0", List.of("1.0.0", "1.4.0", "2.0.0"))).isFalse();
+        assertThat(this.githubAction.isLatestMajorVersion("1.3.0", List.of("1.0.0", "1.2.0", "2.0.0")))
+                .isTrue();
+        assertThat(this.githubAction.isLatestMajorVersion("1.3.0", List.of("1.0.0", "1.4.0", "2.0.0")))
+                .isFalse();
     }
 
     /**
      * Test method.
      */
     @Test
-    void whenIsLatestMajorVersionNull_thenThrowNullPointerException()
-        throws Exception {
-        var emptyList = List.<String> of();
+    void whenIsLatestMajorVersionNull_thenThrowNullPointerException() throws Exception {
+        var emptyList = List.<String>of();
         assertThrows(NullPointerException.class, () -> this.githubAction.isLatestMajorVersion(null, emptyList));
         assertThrows(NullPointerException.class, () -> this.githubAction.isLatestMajorVersion("1.0.0", null));
     }
@@ -567,20 +554,23 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenIsLatestMajorMinorVersion_thenReturnValidValue()
-        throws Exception {
-        assertThat(this.githubAction.isLatestMajorMinorVersion("1.3.3", List.of())).isTrue();
-        assertThat(this.githubAction.isLatestMajorMinorVersion("1.3.3", List.of("1.0.0", "1.2.0", "1.3.0", "1.4.0", "2.0.0"))).isTrue();
-        assertThat(this.githubAction.isLatestMajorMinorVersion("1.3.3", List.of("1.0.0", "1.2.0", "1.3.0", "1.3.4", "1.4.0", "2.0.0"))).isFalse();
+    void whenIsLatestMajorMinorVersion_thenReturnValidValue() throws Exception {
+        assertThat(this.githubAction.isLatestMajorMinorVersion("1.3.3", List.of()))
+                .isTrue();
+        assertThat(this.githubAction.isLatestMajorMinorVersion(
+                        "1.3.3", List.of("1.0.0", "1.2.0", "1.3.0", "1.4.0", "2.0.0")))
+                .isTrue();
+        assertThat(this.githubAction.isLatestMajorMinorVersion(
+                        "1.3.3", List.of("1.0.0", "1.2.0", "1.3.0", "1.3.4", "1.4.0", "2.0.0")))
+                .isFalse();
     }
 
     /**
      * Test method.
      */
     @Test
-    void whenIsLatestMajorMinorVersionNull_thenThrowNullPointerException()
-        throws Exception {
-        var emptyList = List.<String> of();
+    void whenIsLatestMajorMinorVersionNull_thenThrowNullPointerException() throws Exception {
+        var emptyList = List.<String>of();
         assertThrows(NullPointerException.class, () -> this.githubAction.isLatestMajorMinorVersion(null, emptyList));
         assertThrows(NullPointerException.class, () -> this.githubAction.isLatestMajorMinorVersion("1.0.0", null));
     }
@@ -589,21 +579,25 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenIsLatestMajorMinorPatchVersion_thenReturnValidValue()
-        throws Exception {
-        assertThat(this.githubAction.isLatestMajorMinorPatchVersion("1.3.3-rc.1", List.of())).isTrue();
-        assertThat(this.githubAction.isLatestMajorMinorPatchVersion("1.3.3-rc.1", List.of("1.0.0", "1.2.0", "1.3.3-rc.0", "1.4.0", "2.0.0"))).isTrue();
-        assertThat(this.githubAction.isLatestMajorMinorPatchVersion("1.3.3-rc.1", List.of("1.0.0", "1.2.0", "1.3.0", "1.3.3-rc.2", "1.3.4", "1.4.0", "2.0.0"))).isFalse();
+    void whenIsLatestMajorMinorPatchVersion_thenReturnValidValue() throws Exception {
+        assertThat(this.githubAction.isLatestMajorMinorPatchVersion("1.3.3-rc.1", List.of()))
+                .isTrue();
+        assertThat(this.githubAction.isLatestMajorMinorPatchVersion(
+                        "1.3.3-rc.1", List.of("1.0.0", "1.2.0", "1.3.3-rc.0", "1.4.0", "2.0.0")))
+                .isTrue();
+        assertThat(this.githubAction.isLatestMajorMinorPatchVersion(
+                        "1.3.3-rc.1", List.of("1.0.0", "1.2.0", "1.3.0", "1.3.3-rc.2", "1.3.4", "1.4.0", "2.0.0")))
+                .isFalse();
     }
 
     /**
      * Test method.
      */
     @Test
-    void whenIsLatestMajorMinorPatchVersionNull_thenThrowNullPointerException()
-        throws Exception {
-        var emptyList = List.<String> of();
-        assertThrows(NullPointerException.class, () -> this.githubAction.isLatestMajorMinorPatchVersion(null, emptyList));
+    void whenIsLatestMajorMinorPatchVersionNull_thenThrowNullPointerException() throws Exception {
+        var emptyList = List.<String>of();
+        assertThrows(
+                NullPointerException.class, () -> this.githubAction.isLatestMajorMinorPatchVersion(null, emptyList));
         assertThrows(NullPointerException.class, () -> this.githubAction.isLatestMajorMinorPatchVersion("1.0.0", null));
     }
 
@@ -611,24 +605,13 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenGetMaintenanceBranchNameMaintenanceBranchMajor_thenReturnPresent()
-        throws Exception {
-        when(this.ghRepositoryMock.getBranches()).thenReturn(Map.of("main", mock(GHBranch.class), "maintenances/1.x", mock(GHBranch.class)));
+    void whenGetMaintenanceBranchNameMaintenanceBranchMajor_thenReturnPresent() throws Exception {
+        when(this.ghRepositoryMock.getBranches())
+                .thenReturn(Map.of("main", mock(GHBranch.class), "maintenances/1.x", mock(GHBranch.class)));
 
-        assertThat(this.githubAction.getMaintenanceBranchName("1.0.0")).isPresent().contains("maintenances/1.x");
-
-        verify(this.ghRepositoryMock).getBranches();
-    }
-
-    /**
-     * Test method.
-     */
-    @Test
-    void whenGetMaintenanceBranchNameMaintenanceBranchMajorMinor_thenReturnPresent()
-        throws Exception {
-        when(this.ghRepositoryMock.getBranches()).thenReturn(Map.of("main", mock(GHBranch.class), "maintenances/1.0.x", mock(GHBranch.class)));
-
-        assertThat(this.githubAction.getMaintenanceBranchName("1.0.0")).isPresent().contains("maintenances/1.0.x");
+        assertThat(this.githubAction.getMaintenanceBranchName("1.0.0"))
+                .isPresent()
+                .contains("maintenances/1.x");
 
         verify(this.ghRepositoryMock).getBranches();
     }
@@ -637,9 +620,30 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenGetMaintenanceBranchNameNoMaintenanceBranch_thenReturnEmpty()
-        throws Exception {
-        when(this.ghRepositoryMock.getBranches()).thenReturn(Map.of("main", mock(GHBranch.class), "maintenances/2.0.x", mock(GHBranch.class), "maintenances/1.1.x", mock(GHBranch.class)));
+    void whenGetMaintenanceBranchNameMaintenanceBranchMajorMinor_thenReturnPresent() throws Exception {
+        when(this.ghRepositoryMock.getBranches())
+                .thenReturn(Map.of("main", mock(GHBranch.class), "maintenances/1.0.x", mock(GHBranch.class)));
+
+        assertThat(this.githubAction.getMaintenanceBranchName("1.0.0"))
+                .isPresent()
+                .contains("maintenances/1.0.x");
+
+        verify(this.ghRepositoryMock).getBranches();
+    }
+
+    /**
+     * Test method.
+     */
+    @Test
+    void whenGetMaintenanceBranchNameNoMaintenanceBranch_thenReturnEmpty() throws Exception {
+        when(this.ghRepositoryMock.getBranches())
+                .thenReturn(Map.of(
+                        "main",
+                        mock(GHBranch.class),
+                        "maintenances/2.0.x",
+                        mock(GHBranch.class),
+                        "maintenances/1.1.x",
+                        mock(GHBranch.class)));
 
         assertThat(this.githubAction.getMaintenanceBranchName("1.0.0")).isEmpty();
 
@@ -650,8 +654,7 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenGetMaintenanceBranchNameNull_thenThrowNullPointerException()
-        throws Exception {
+    void whenGetMaintenanceBranchNameNull_thenThrowNullPointerException() throws Exception {
         assertThrows(NullPointerException.class, () -> this.githubAction.getMaintenanceBranchName(null));
     }
 
@@ -659,8 +662,7 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenGetTags_thenReturnTags()
-        throws Exception {
+    void whenGetTags_thenReturnTags() throws Exception {
         var ghTag1 = Mockito.mock(GHTag.class);
         when(ghTag1.getName()).thenReturn("v1.0.0");
 
@@ -688,8 +690,7 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenGitTagNull_thenThrowNullPointerException()
-        throws Exception {
+    void whenGitTagNull_thenThrowNullPointerException() throws Exception {
         assertThrows(NullPointerException.class, () -> this.githubAction.gitTag(null));
     }
 
@@ -705,9 +706,7 @@ class SemverReleaseVarsGitHubActionTest {
      * Test method.
      */
     @Test
-    void whenBranchRefNameNull_thenThrowNullPointerException()
-        throws Exception {
+    void whenBranchRefNameNull_thenThrowNullPointerException() throws Exception {
         assertThrows(NullPointerException.class, () -> this.githubAction.branchRef(null));
     }
-
 }
