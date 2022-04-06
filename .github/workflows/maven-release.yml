@@ -31,7 +31,7 @@ jobs:
 
       - name: compute release vars
         id: release_vars
-        uses: julbme/gh-action-semver-release-vars@v1
+        uses: julbme/gh-action-semver-release-vars@v1.0.0
         with:
           package_version: ${{ steps.current_vars.outputs.version }}
         env:
