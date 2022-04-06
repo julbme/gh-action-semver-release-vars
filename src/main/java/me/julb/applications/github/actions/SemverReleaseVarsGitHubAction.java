@@ -26,6 +26,7 @@ package me.julb.applications.github.actions;
 import java.io.IOException;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.TreeSet;
@@ -58,6 +59,11 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
      * The SNAPSHOT_SUFFIX attribute.
      */
     private static final String SNAPSHOT_SUFFIX = "SNAPSHOT";
+
+    /**
+     * The pattern to match first "v" character.
+     */
+    private static final Pattern STARTS_WITH_V_PATTERN = Pattern.compile("^v");
 
     /**
      * The pattern to match for trigger release branch.
@@ -117,7 +123,7 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
             var tagsByVersion = getTags();
 
             // Ensure a tag with this version does not exist.
-            if (tagsByVersion.containsKey(releaseVersion.toLowerCase())) {
+            if (tagsByVersion.containsKey(releaseVersion.toLowerCase(Locale.ROOT))) {
                 throw new IllegalArgumentException(
                         String.format("a tag for version %s already exists in the repository.", releaseVersion));
             }
@@ -141,9 +147,10 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
                     semverReleaseVersion.getPatch());
             var minorVersion = String.valueOf(semverReleaseVersion.getMinor());
             var patchVersion = String.valueOf(semverReleaseVersion.getPatch());
-            var suffixVersion = semverReleaseVersion.getSuffixTokens().length > 0
-                    ? StringUtils.join(semverReleaseVersion.getSuffixTokens(), ".")
-                    : null;
+            String suffixVersion = null;
+            if (semverReleaseVersion.getSuffixTokens().length > 0) {
+                suffixVersion = StringUtils.join(semverReleaseVersion.getSuffixTokens(), ".");
+            }
             var buildVersion = semverReleaseVersion.getBuild();
 
             // Get target branch
@@ -232,7 +239,9 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
      * @return the "package_version" input.
      */
     Optional<String> getInputPackageVersion() {
-        return ghActionsKit.getInput("package_version").map(v -> v.replaceFirst("^v", ""));
+        return ghActionsKit
+                .getInput("package_version")
+                .map(v -> STARTS_WITH_V_PATTERN.matcher(v).replaceFirst(""));
     }
 
     /**
@@ -341,17 +350,21 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
     Map<String, GHTag> getTags() throws IOException {
         var tags = new HashMap<String, GHTag>();
         for (GHTag ghTag : ghRepository.listTags()) {
-            var tagName = ghTag.getName().toLowerCase().replaceFirst("^v", "");
+            var tagName = STARTS_WITH_V_PATTERN
+                    .matcher(ghTag.getName().toLowerCase(Locale.ROOT))
+                    .replaceFirst("");
             tags.put(tagName, ghTag);
         }
         return tags;
     }
 
     /**
-     * Returns <code>true</code> if the version is the latest under major version scopes, <code>false</code> otherwise.
+     * Returns <code>true</code> if the version is the latest under major version scopes,
+     *  <code>false</code> otherwise.
      * @param version the version.
      * @param taggedVersions the list of versions to check.
-     * @return <code>true</code> if the version is the latest under major version scopes, <code>false</code> otherwise.
+     * @return <code>true</code> if the version is the latest under major version scopes,
+     *  <code>false</code> otherwise.
      */
     boolean isLatestMajorVersion(@NonNull String version, @NonNull Collection<String> taggedVersions) {
         // list that holds all versions sharing major.
@@ -374,10 +387,12 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
     }
 
     /**
-     * Returns <code>true</code> if the version is the latest under major.minor version scope, <code>false</code> otherwise.
+     * Returns <code>true</code> if the version is the latest under major.minor version scope,
+     *  <code>false</code> otherwise.
      * @param version the version.
      * @param taggedVersions the list of versions to check.
-     * @return <code>true</code> if the version is the latest under major.minor version scope, <code>false</code> otherwise.
+     * @return <code>true</code> if the version is the latest under major.minor version scope,
+     *  <code>false</code> otherwise.
      */
     boolean isLatestMajorMinorVersion(@NonNull String version, @NonNull Collection<String> taggedVersions) {
         // list that holds all versions sharing major/minor.
@@ -401,10 +416,12 @@ public class SemverReleaseVarsGitHubAction implements GitHubActionProvider {
     }
 
     /**
-     * Returns <code>true</code> if the version is the latest under major.minor.patch version scope, <code>false</code> otherwise.
+     * Returns <code>true</code> if the version is the latest under major.minor.patch version scope,
+     *  <code>false</code> otherwise.
      * @param version the version.
      * @param taggedVersions the list of versions to check.
-     * @return <code>true</code> if the version is the latest under major.minor.patch version scope, <code>false</code> otherwise.
+     * @return <code>true</code> if the version is the latest under major.minor.patch version scope,
+     *  <code>false</code> otherwise.
      */
     boolean isLatestMajorMinorPatchVersion(@NonNull String version, @NonNull Collection<String> taggedVersions) {
         // list that holds all versions sharing major/minor.
