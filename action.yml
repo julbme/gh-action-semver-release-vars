@@ -30,7 +30,7 @@ outputs:
   git_tag_patch:
     description: "The git tag with major/minor/patch version only if the release version is the latest in major/minor/patch scope."
   docker_tag:
-    descrption: The Docker tag for that version."
+    description: The Docker tag for that version."
   docker_tag_major:
     description: "The Docker tag with major version only if the release version is the latest in major scope."
   docker_tag_minor:
@@ -54,7 +54,7 @@ outputs:
   trigger_branch_ref:
     description: "The branch ref which triggered the release."
   run_branch:
-    descrption: "The temporary branch in which release commits can be pushed before being merged in target branch."
+    description: "The temporary branch in which release commits can be pushed before being merged in target branch."
   run_branch_ref:
     description: "The temporary branch ref in which release commits can be pushed before being merged in target branch."
   target_branch:
